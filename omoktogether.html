@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-gap: 2px;
+      border: 2px solid #333;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .cell.empty {
+      background-color: #eee;
+    }
+  </style>
+  <title>오목판</title>
+</head>
+<body>
+  <!-- 오목판을 나타내는 div -->
+  <div id="board"></div>
+
+  <!-- 폼 요소 -->
+  <form id="gameForm" action="server.php" method="post">
+    <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
+    <input type="hidden" id="clickedRow" name="row" value="">
+    <input type="hidden" id="clickedCol" name="col" value="">
+    <!-- 제출 버튼 -->
+    <input type="submit" value="Submit" style="display: none;">
+  </form>
+
+  <script>
+    // 오목판 크기
+    const boardSize = 15;
+
+    // 오목판을 나타내는 div 요소 참조
+    const board = document.getElementById('board');
+
+    // 오목판 생성 및 이벤트 핸들러 등록
+    for (let i = 0; i < boardSize; i++) {
+      for (let j = 0; j < boardSize; j++) {
+        // 셀(div 엘리먼트) 생성
+        const cell = document.createElement('div');
+        
+        // 초기 클래스 및 데이터 설정
+        cell.className = 'cell empty';
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+
+        // 클릭 이벤트 리스너 등록
+        cell.addEventListener('click', handleCellClick);
+
+        // 오목판에 셀 추가
+        board.appendChild(cell);
+      }
+    }
+
+    // 셀 클릭 시 호출되는 함수
+    function handleCellClick(event) {
+      const clickedCell = event.target;
+      const clickedRow = clickedCell.dataset.row;
+      const clickedCol = clickedCell.dataset.col;
+
+      // 클릭한 좌표를 hidden 필드에 설정
+      document.getElementById('clickedRow').value = clickedRow;
+      document.getElementById('clickedCol').value = clickedCol;
+
+      // 폼 제출
+      document.getElementById('gameForm').submit();
+    }
+  </script>
+</body>
+</html>
