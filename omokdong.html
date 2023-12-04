@@ -64,15 +64,21 @@
     }
 
     function findCell(row, col) {
-    return board.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    return board.querySelector('div[data-row="${row}"][data-col="${col}"]');
   } 
 
 
 
   function fetchDataFromServer() {
+    var data={end:1};
+    var formData=new FormData();
+    for(var key in data){
+      formData.append(key,data[key]);
+    }
   // 서버에 데이터를 요청하는 fetch 함수 사용
-    fetch('server.php/data?data=${end}', {
+    fetch('server.php', {
         method: 'POST',
+        body:formData
     })
     .then(response => {
       if (!response.ok) {
@@ -93,6 +99,19 @@
           hwak.push(sep[i]);
         }
       }
+      const numberCoordinates = [];
+
+      for (let i = 0; i < sep.length/3; i++) {
+        const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
+        numberCoordinates.push(coordinate);
+        }
+
+      numberCoordinates.forEach(coord => {
+        const cell = findCell(coord.row, coord.col);
+        if (cell) {
+          cell.innerText = coord.number;
+        }
+    });
     })
     .catch(error => {
       console.error('Error during data fetch:', error);
@@ -101,19 +120,7 @@
 
   setInterval(fetchDataFromServer, 1000);
 
-      const numberCoordinates = [];
-
-      for (let i = 0; i < sep.length; i++) {
-        const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
-        numberCoordinates.push(coordinate);
-        }
-
-    numberCoordinates.forEach(coord => {
-      const cell = findCell(coord.row, coord.col);
-      if (cell) {
-        cell.innerText = coord.number;
-      }
-    });
+      
      
     function handleCellClick(event) {
       const clickedCell = event.target;
