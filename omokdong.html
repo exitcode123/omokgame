@@ -103,7 +103,7 @@
       numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
         if (cell) {
-          cell.textContent = hwak;
+          cell.textContent = coord.number;
         }
       });
 
