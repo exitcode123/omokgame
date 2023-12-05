@@ -35,7 +35,7 @@
 </head>
 <body>
   <div id="board"></div>
-
+  <div id="timeResult"></div>
   <!-- 폼 요소 -->
   <form id="gameForm" action="server.php" method="post" target="hello">
     <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
@@ -64,23 +64,13 @@
     }
 
     function findCell(row, col) {
-     finds=document.querySelector(".board");
-     return finds.querySelector('div[data-row="${row}"][data-col="${col}"]');
+      return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
   } 
 
 
 
   function fetchDataFromServer() {
-    var data={end:1};
-    var formData=new FormData();
-    for(var key in data){
-      formData.append(key,data[key]);
-    }
-  // 서버에 데이터를 요청하는 fetch 함수 사용
-    fetch('server.php', {
-        method: 'POST',
-        body:formData
-    })
+    fetch('serverend.php')
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -88,6 +78,9 @@
       return response.json();
     })
     .then(data => { 
+      xcor=[];
+      ycor=[];
+      hwak=[];
       var sep=data.split(" ");
       for(i=0; i<sep.length; i++){
         if(i%3==0){
@@ -105,17 +98,19 @@
       for (let i = 0; i < sep.length/3; i++) {
         const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
         numberCoordinates.push(coordinate);
-        }
+      }
 
       numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
         if (cell) {
-          cell.innerText = coord.number;
+          cell.textContent = hwak;
         }
-    });
+      });
+
     })
     .catch(error => {
-      console.error('Error during data fetch:', error);
+      const timeResultElement = document.getElementById('timeResult');
+      timeResultElement.textContent = 2;
     });
   } 
 
@@ -126,7 +121,7 @@
     function handleCellClick(event) {
       const clickedCell = event.target;
       
-      clickedCell.style.backgroundColor='lightblue'
+      //clickedCell.style.backgroundColor='lightblue'
       const clickedRow = clickedCell.dataset.row;
       const clickedCol = clickedCell.dataset.col;
      
