@@ -103,8 +103,9 @@
 
       numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
-        if (cell) {
+        if (cell) {           //if (cell)이라는 건 findCell을 통해 선택받은 오목좌표들을 가리키는거야.
           cell.textContent = coord.number+"%";
+          cell.style.textAlign = 'center';
         }
       });
 
@@ -126,6 +127,12 @@
         return response.json();
       })
       .then(data => {
+        numberCoordinates.forEach(coord => {
+        const cell = findCell(coord.row, coord.col);
+        if (cell) {
+          cell.textContent = '';
+        }
+       });
         mxcor=[];
         mycor=[];
         var msep=data.split(" ");
@@ -142,7 +149,7 @@
   function handleCellClick(event) {
       const clickedCell = event.target;
       
-      //clickedCell.style.backgroundColor='lightblue'
+      //clickedCell.style.backgroundColor='lightblue' -->클릭한 오목칸의 색깔을 바꾸어주는 코드
       const clickedRow = clickedCell.dataset.row;
       const clickedCol = clickedCell.dataset.col;
      
@@ -151,8 +158,6 @@
 
       // 폼 제출
       document.getElementById('gameForm').submit();
-
-     
     }
   </script>
     <iframe name='hello' style='display:none;'></iframe>
