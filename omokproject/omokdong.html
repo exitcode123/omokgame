@@ -141,6 +141,9 @@
         if (cell) {
           cell.style.backgroundColor='black';
          }
+        xcor=[];
+        ycor=[];
+        hwak=[];
         });
    }
 
@@ -152,6 +155,8 @@
       //clickedCell.style.backgroundColor='lightblue'
       const clickedRow = clickedCell.dataset.row;
       const clickedCol = clickedCell.dataset.col;
+
+      clickedCell.style.cursor = 'default'; //내가 만든 부분
      
       // 클릭한 좌표를 hidden 필드에 설정
       document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
