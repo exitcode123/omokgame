@@ -12,6 +12,12 @@
       margin: 0;
     }
 
+    .shape {
+      border-radius: 50%; /* 모서리를 둥글게 만들어 조그맣게 보이도록 설정 */
+      box-sizing: border-box; /* 경계 상자 크기를 포함하여 전체 너비와 높이를 조절 */
+      border: 2px solid red; /* 테두리 추가 */
+    }
+
     #board {
       display: grid;
       grid-template-columns: repeat(15, 30px);
@@ -40,7 +46,7 @@
   <!-- 폼 요소 -->
   <form id="gameForm" action="server.php" method="post" target="hello">
     <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
-    <input type="hidden" id="clickedRow" name="coordinate" value="">
+    <input type="hidden" id="clickedRow" name="coordinate" value=""> //form 태그에 제출할 정보들이 input 태그 안에 있는거야.
     <!-- 제출 버튼 -->
     <input type="submit" value="Submit" style="display: none;">
   </form>
@@ -69,8 +75,6 @@
       return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
   } 
 
-
-
   function fetchDataFromServer() {
     fetch('serverend.php')
     .then(response => {
@@ -95,6 +99,7 @@
           hwak.push(sep[i]);
         }
       }
+
       numberCoordinates = [];
 
       for (let i = 0; i < sep.length/3; i++) {
@@ -118,7 +123,7 @@
 
   setInterval(fetchDataFromServer, 1000);
 
-  function ultimateDecision(){
+  function ultimateDecision(){ //20초만에 어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
     fetch('serverggt.php')
       .then(response => {
         if (!response.ok) {
@@ -139,32 +144,43 @@
         const cell = findCell(msep[0], msep[1]);
 
         if (cell) {
+          cell.classList.add('shape');
           cell.style.backgroundColor='black';
           clickedCell.style.cursor = 'default';
           cell.style.pointerEvents = 'none'; 
-         }
-        
+          omokbgm.play();
+        }
+        /*
+        xcor=[];
+        ycor=[];  xcor ycor hwak을 내가 왜 비웠지? 동원이 말로는 무의미한 행동, 그 근거를 찾아보자.
+        hwak=[];
+        */
         });
    }
+   
 
   setInterval(ultimateDecision, 20000);
+
+  const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+  // Audio 객체 생성
+  const omokbgm = new Audio(soundFilePath);
+
      
   function handleCellClick(event) {
-      const clickedCell = event.target;
-      
-      //clickedCell.style.backgroundColor='lightblue'
-      const clickedRow = clickedCell.dataset.row;
-      const clickedCol = clickedCell.dataset.col;
+    const clickedCell = event.target;
+    
+    //clickedCell.style.backgroundColor='lightblue'
+    const clickedRow = clickedCell.dataset.row;
+    const clickedCol = clickedCell.dataset.col;
 
-      clickedCell.style.cursor = 'default'; //내가 만든 부분
-     
-      // 클릭한 좌표를 hidden 필드에 설정
-      document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
+    // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
+    
+    // 클릭한 좌표를 hidden 필드에 설정
+    document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
 
-      // 폼 제출
-      document.getElementById('gameForm').submit();
-
-     
+    // 폼 제출
+    document.getElementById('gameForm').submit();
     }
   </script>
     <iframe name='hello' style='display:none;'></iframe>
