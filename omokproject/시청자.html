@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-gap: 2px;
+      border: 2px solid #333;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .cell.empty {
+      background-color: #eee;
+    }
+  </style>
+  <title>오목판</title>
+</head>
+<body>
+
+  <div id="board"></div>
+  <div id="timeResult"></div>
+  <!-- 폼 요소 -->
+  <form id="gameForm" action="server.php" method="post" target="hello">
+    <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
+    <input type="hidden" id="clickedRow" name="coordinate" value=""> //form 태그에 제출할 정보들이 input 태그 안에 있는거야.
+    <!-- 제출 버튼 -->
+    <input type="submit" value="Submit" style="display: none;">
+  </form>
+
+  <script>
+    const boardSize = 15;
+    const board = document.getElementById('board');
+
+    var xcor=new Array(); //x좌표
+    var ycor=new Array(); //y좌표
+    var hwak=new Array(); //확률값
+    var numberCoordinates = [];
+
+    for (let i = 0; i < boardSize; i++) {
+      for (let j = 0; j < boardSize; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell empty';
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+        cell.addEventListener('click', handleCellClick);
+        board.appendChild(cell);
+      }
+    }
+
+    function findCell(row, col) {
+      return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
+  } 
+
+
+  function fetchDataFromServer() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
+    fetch('serverend.php')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => { 
+      xcor=[];
+      ycor=[];
+      hwak=[];
+      var sep=data.split(" ");
+      for(i=0; i<sep.length; i++){
+        if(i%3==0){
+          xcor.push(sep[i]);
+        }
+        if(i%3==1){
+          ycor.push(sep[i]);
+        }
+        if(i%3==2){
+          hwak.push(sep[i]);
+        }
+      }
+
+      numberCoordinates = [];
+
+      for (let i = 0; i < sep.length/3; i++) {
+        const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
+        numberCoordinates.push(coordinate);
+      }
+
+      numberCoordinates.forEach(coord => {
+        const cell = findCell(coord.row, coord.col);
+        if (cell) {
+          cell.textContent = coord.number+"%";
+        }
+      });
+
+    })
+    .catch(error => {
+      const timeResultElement = document.getElementById('timeResult');
+      timeResultElement.textContent = 2;
+    });
+  } 
+
+  setInterval(fetchDataFromServer, 1000);
+
+  function ultimateDecision(){ //20초만에 어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
+    fetch('serverggt.php')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        numberCoordinates.forEach(coord => {
+        const cell = findCell(coord.row, coord.col);
+        if (cell) {
+          cell.textContent = '';
+        }
+       });
+        mxcor=[];
+        mycor=[];
+        var msep=data.split(" ");
+        const cell = findCell(msep[0], msep[1]);
+
+        if (cell) {
+          cell.classList.add('shape');
+          cell.style.backgroundColor='black';
+          clickedCell.style.cursor = 'default';
+          cell.style.pointerEvents = 'none'; 
+          omokbgm.play();
+        }
+        /*
+        xcor=[];
+        ycor=[];  xcor ycor hwak을 내가 왜 비웠지? 동원이 말로는 무의미한 행동, 그 근거를 찾아보자.
+        hwak=[];
+        */
+        });
+   }
+   
+
+  setInterval(ultimateDecision, 20000);
+
+
+
+  
+
+  function oowak(){   //우왁굳의 좌표 정보를 받고 그 좌표에 흰색을 칠해야 해.
+    fetch('우왁굳의 좌표를 주는 서버.php')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data=>{
+        var oowak_x=[];
+        var oowak_y=[];
+        var oowak_sep=data.split(" ");
+        const oowak_cell=findCell(oowak_sep[0], oowak_sep[1]);
+
+        if (oowak_cell){
+          oowak_cell.style.backgroundColor='white';
+        }////////////////////////////////여기 하는 중이야. 명심해!!
+
+      })
+    }
+
+    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+  // Audio 객체 생성
+  const omokbgm = new Audio(soundFilePath);
+
+     
+  function handleCellClick(event) {
+    const clickedCell = event.target;
+    
+    //clickedCell.style.backgroundColor='lightblue'
+    const clickedRow = clickedCell.dataset.row;
+    const clickedCol = clickedCell.dataset.col;
+
+    // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
+    
+    // 클릭한 좌표를 hidden 필드에 설정
+    document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
+
+    // 폼 제출
+    document.getElementById('gameForm').submit();
+    }
+  </script>
+    <iframe name='hello' style='display:none;'></iframe>
+</body>
+</html>

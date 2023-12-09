@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+     body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-gap: 2px;
+      border: 2px solid #333;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .cell.empty {
+      background-color: #eee;
+    }
+  </style>
+  <title>우왁굳</title>
+</head>
+<body>
+  <div id="board"></div>
+  <form id="gameForm" action="server.php" method="post" target="hello">
+    <input type="hidden" id="clickedRow" name="coordinate" value=""> 
+    <!-- 제출 버튼 -->
+    <input type="submit" value="Submit" style="display: none;">
+  </form>
+  <script>
+    const boardSize = 15;
+    const board = document.getElementById('board');
+
+    for (let i = 0; i < boardSize; i++) {
+      for (let j = 0; j < boardSize; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell empty';
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+        cell.addEventListener('click', handleCellClick);
+        board.appendChild(cell);
+      }
+    }
+
+    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+    // Audio 객체 생성
+    const omokbgm = new Audio(soundFilePath);
+
+
+    function handleCellClick(event) {
+      const clickedCell = event.target;
+      
+      
+      const clickedRow = clickedCell.dataset.row;   
+      const clickedCol = clickedCell.dataset.col;
+
+      clickedCell.style.backgroundColor='white';
+
+      omokbgm.play();
+
+      clickedCell.style.pointerEvents = 'none'; 
+
+
+      function disableClick() {
+        var board = document.getElementById('board');
+        board.style.cursor = 'default';
+        board.style.pointerEvents = 'none';
+
+        // 20초 후에 enableClick 함수 호출          //클릭한 순간으로부터 20초동안 클릭이 안됨.
+        setTimeout(enableClick, 20000);
+      }
+
+      function enableClick() {
+        var board = document.getElementById('board');
+        board.style.cursor = 'auto';
+        board.style.pointerEvents = 'auto';
+      }
+
+      // 특정 상황에서 클릭을 일시적으로 비활성화하고자 하는 코드
+      disableClick();
+
+      // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
+      
+      // 클릭한 좌표를 hidden 필드에 설정
+      document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
+
+      
+      document.getElementById('gameForm').submit(); //우왁굳의 클릭한 좌표를 서버에게 준다.
+    }
+
+
+    
+  </script>
+    <iframe name='hello' style='display:none;'></iframe>
+</body> 
+</html>
