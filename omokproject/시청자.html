@@ -49,6 +49,12 @@
     const boardSize = 15;
     const board = document.getElementById('board');
 
+    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+    // Audio 객체 생성
+    const omokbgm = new Audio(soundFilePath);
+
+
     var xcor=new Array(); //x좌표
     var ycor=new Array(); //y좌표
     var hwak=new Array(); //확률값
@@ -63,11 +69,11 @@
         cell.addEventListener('click', handleCellClick);
         board.appendChild(cell);
       }
-    }
+    }  //그냥 여기는 보드에 셀 추가해서 오목판을 만드는 2중 for문이야.
 
     function findCell(row, col) {
       return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
-  } 
+  } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
 
 
   function fetchDataFromServer() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
@@ -78,7 +84,7 @@
       }
       return response.json();
     })
-    .then(data => { 
+    .then(data => { //들어있는 데이터:시청자가 누른 좌표 x, y, 확률이 칸 하나 두고 주는 문자열이야.
       xcor=[];
       ycor=[];
       hwak=[];
@@ -116,10 +122,11 @@
     });
   } 
 
-  setInterval(fetchDataFromServer, 1000);
+  //setInterval(fetchDataFromServer, 1000); 이것도 아마 여기에 이렇게 쓰면 안 돼...
 
-  function ultimateDecision(){ //20초만에 어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
-    fetch('serverggt.php')
+
+  function ultimateDecision(){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
+    fetch('serverggt.php')     //그냥 좌표 하나만 받을거야.
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -130,7 +137,7 @@
         numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
         if (cell) {
-          cell.textContent = '';
+          cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다.
         }
        });
         mxcor=[];
@@ -138,13 +145,14 @@
         var msep=data.split(" ");
         const cell = findCell(msep[0], msep[1]);
 
-        if (cell) {
-          cell.classList.add('shape');
+        if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
           cell.style.backgroundColor='black';
-          clickedCell.style.cursor = 'default';
-          cell.style.pointerEvents = 'none'; 
-          omokbgm.play();
-        }
+          cell.style.cursor = 'default';     //20초만에 돌이 놓아지는 순간 이젠 우왁굳의 차례니깐 board 전체에 돌이 안놓아져.                                    
+          cell.style.pointerEvents = 'none'; //이 말은 즉슨 시청자는 돌을 못 놓아.
+          omokbgm.play();                  
+          board.style.cursor = 'default';    //시청자-->우왁굳 ultimateDecision해서 이제 시청자 클릭 못함.
+          board.style.pointerEvents = 'none';  //board랑 cell의 원래 스타일을 돌리지 않는 한 시청자가 다시 돌을 놓을 수 없다.
+        }                                   
         /*
         xcor=[];
         ycor=[];  xcor ycor hwak을 내가 왜 비웠지? 동원이 말로는 무의미한 행동, 그 근거를 찾아보자.
@@ -154,39 +162,31 @@
    }
    
 
-  setInterval(ultimateDecision, 20000);
-
-
-
-  
+  //setInterval(ultimateDecision, 20000); 이건 ㄹㅇ 실행하면 안 될 것 같아.
 
   function oowak(){   //우왁굳의 좌표 정보를 받고 그 좌표에 흰색을 칠해야 해.
-    fetch('우왁굳의 좌표를 주는 서버.php')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
+    fetch('우왁굳의 좌표를 주는 서버.php') //시간이 10초, 20초 걸리건 어쨌든 우리는 우왁굳으로부터 좌표를 받게 될거고 그러면 클릭 가능해.
+      .then(response => response.json())  //이렇게 하면 받을 준비만 하다가 받고 후딱 처리하는거야.
       .then(data=>{
         var oowak_x=[];
         var oowak_y=[];
         var oowak_sep=data.split(" ");
         const oowak_cell=findCell(oowak_sep[0], oowak_sep[1]);
 
-        if (oowak_cell){
-          oowak_cell.style.backgroundColor='white';
-        }////////////////////////////////여기 하는 중이야. 명심해!!
-
+        if (oowak_cell){ //우왁굳의 클릭 좌표
+          oowak_cell.style.backgroundColor='blue';  //우왁굳이 돌을 놓아.
+          omokbgm.play();
+          board.style.cursor = 'auto';
+          board.style.pointerEvents = 'auto'; 
+          setInterval(fetchDataFromServer, 1000);   //우왁굳-->시청자
+          setTimeout(ultimateDecision, 20000);      //이제 시청자가 클릭을 할 수 있어.(20초동안)   
+        } 
       })
-    }
+  }
 
-    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+  oowak(); //우왁굳의 클릭 좌표를 받아서 처리할 준비를 하는거야.
 
-  // Audio 객체 생성
-  const omokbgm = new Audio(soundFilePath);
-
-     
+      
   function handleCellClick(event) {
     const clickedCell = event.target;
     
