@@ -127,13 +127,29 @@
           cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 클릭을 할 때 확률 사라져.
         }
         });
-        mxcor=[];
-        mycor=[];
+    
         var msep=data.split(" ");
+
+        if (msep.length==3){ //시청자가 ultimatedecision을 통해서 게임이 끝났을 경우 우왁굳은 지거나 비겨
+          const viewer_finalCell=findCell(msep[0], msep[1]);
+          viewer_finalCell.style.backgroundColor='black';
+          if (msep[2]==0){
+            alert("헤이 시청자가 돌을"+msep[0], msep[1]+"에 두었어.");
+            alert("졌으니깐 다음에 더 분발해보도록");
+            //뭐 예를 들어 다른 페이지로 넘어가게 해서 게임을 끝내기..?
+          }
+          if (msep[2]==2){
+            alert("헤이 시청자가 돌을"+msep[0], msep[1]+"에 두었어.")
+            alert("둘이 비겼어. 다음엔 더 잘해봐.");
+            //다른 페이지로 넘어가게 해서 게임 끝내기..? return을 써야하나..?
+          }
+        }
         const cell = findCell(msep[0], msep[1]);
 
         if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
-          cell.style.backgroundColor='black';
+          cell.style.backgroundColor='black';//시청자-->우왁굳
+          board.style.cursor='auto';
+          board.style.pointerEvents='auto'; 
         }                                   
         /*
         xcor=[];
@@ -143,7 +159,32 @@
       });
    }
 
-    
+  function oowak_result(){ //우왁굳이 돌을 놓을 때마다 계속 요청을 할거야. 야 서버야, 끝남? 이렇게
+
+    const clickingCell = document.querySelector('.clicked');
+
+    fetch('우왁굳이 돌을 놓은 직후에 게임의 결과를 알려주는 서버.php')
+    .then(response => { 
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data==1){
+        clickingCell.style.backgroundColor='blue';
+        alert('게임에서 이겼습니다. 축하드립니다.');
+        //다른 페이지로 넘어가게 하고 그런 거 안되나..?
+      } else if (data==2){
+          clickingCell.style.backgroundColor='blue';
+          alert('게임에서 비겼습니다. 다음에 더 분발해보세요.');
+          //다른 페이지로 넘어가기 안되나..?
+      }
+    }
+    )
+  }
+
+
     function disableClick() {  //클릭이랑 커서를 비활성화시키는 함수
       board.style.cursor = 'default';
       board.style.pointerEvents = 'none';
@@ -157,23 +198,31 @@
       board.style.pointerEvents = 'auto';
     }
 
-    function handleCellClick(event) {  //우왁굳이 돌을 놓는 것을 결정하는 함수야.
+
+    function handleCellClick(event) {  //우왁굳이 돌을 놓는 함수야.
       const clickedCell = event.target;
+
+      clickedCell.classList.add('clicked');
       
       const clickedRow = clickedCell.dataset.row;   
       const clickedCol = clickedCell.dataset.col;
 
-      clickedCell.style.backgroundColor='blue';  //우왁굳이 돌을 착수하면 흰색으로 만들어. 
+
+      clickedCell.style.backgroundColor='blue';  //우왁굳이 돌을 착수하면 파란색으로 만들어. 
 
       omokbgm.play();
+
+      oowak_result();//우왁굳이 돌을 두자마자 게임이 끝났는지 판단을 계속 해야해.
 
       clickedCell.style.pointerEvents = 'none'; 
 
       // 특정 상황에서 클릭을 일시적으로 비활성화하고자 하는 코드
       disableClick();
+      
 
+      //우왁굳-->시청자
       setInterval(fetchDataFromServer, 1000);   //20초동안 돌 못 놓는 동안 1초에 한 번씩 계속 확률값을 봐야겠지?
-
+      setTimeout(ultimateDecision, 20000); //20초동안 우왁굳이 돌을 못 놓을 때 20초 후에 시청자가 최종 결정을 내려야 함.
       // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
       
       // 클릭한 좌표를 hidden 필드에 설정
@@ -182,7 +231,7 @@
       
       document.getElementById('gameForm').submit(); //우왁굳의 클릭한 좌표를 서버에게 준다.
     }
-    
+
   </script>
     <iframe name='hello' style='display:none;'></iframe>
 </body> 
