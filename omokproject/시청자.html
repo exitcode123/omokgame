@@ -66,8 +66,8 @@
         cell.className = 'cell empty';
         cell.dataset.row = i;
         cell.dataset.col = j;
-        cell.addEventListener('click', handleCellClick);
-        board.appendChild(cell);
+        cell.addEventListener('click', handleCellClick); //아 셀을 클릭하면 handleCellClick가 호출됨.
+        board.appendChild(cell);                         //굳이 호출을 하지 않아도 됨. 클릭하면 호출
       }
     }  //그냥 여기는 보드에 셀 추가해서 오목판을 만드는 2중 for문이야.
 
@@ -86,7 +86,7 @@
         board.style.pointerEvents='none';
         oowak(); //우왁굳 선공 따라서 시청자들은 보드 클릭을 못함.
       } else if (data==0){//시청자.html에서 시청자 선공
-         setInterval(fetchDataFromServer, 1000);
+         setInterval(showhwak, 1000);
          setTimeout(ultimateDecision, 20000);
       };
     }) //data는 아마 숫자로 받을 듯 1을 주면 우왁굳 선공, 0을 주면 시청자 선공
@@ -99,7 +99,7 @@
   } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
 
 
-  function fetchDataFromServer() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
+  function showhwak() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
     fetch('serverend.php')
     .then(response => {
       if (!response.ok) {
@@ -109,7 +109,7 @@
     })
     .then(data => { //들어있는 데이터:시청자가 누른 좌표 x, y, 확률이 칸 하나 두고 주는 문자열이야.
       xcor=[];
-      ycor=[];  //근데 이거 비워야 하나...? 1 2 50 1 2 70 이렇게 들어오면 안돼자너.
+      ycor=[]; //이걸 왜 비운거지..? 갑자기 이해가 안 돼..
       hwak=[];
       var sep=data.split(" ");
       for(i=0; i<sep.length; i++){
@@ -144,7 +144,6 @@
       timeResultElement.textContent = 2;
     });
   } 
-
 
   function ultimateDecision(){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
     fetch('serverggt.php')     //그냥 좌표 하나만 받을거야.
@@ -199,13 +198,13 @@
 
   //setInterval(ultimateDecision, 20000); 이건 ㄹㅇ 실행하면 안 될 것 같아.
 
-  function oowak(){   //우왁굳의 좌표 정보를 받고 그 좌표에 흰색을 칠해야 해.
+  function oowak(){   //우왁굳의 좌표 정보를 받고 그 좌표에 파란색을 칠해야 해.
     fetch('우왁굳의 좌표를 주는 서버.php') //시간이 10초, 20초 걸리건 어쨌든 우리는 우왁굳으로부터 좌표를 받게 될거고 그러면 클릭 가능해.
       .then(response => response.json())  //이렇게 하면 받을 준비만 하다가 받고 후딱 처리하는거야.
       .then(data=>{
         var oowak_sep=data.split(" ");
 
-        if (msep.length==3){  //우왁굳이 돌을 놓아서 게임이 끝나는 경우야. 지거나 비기겠지?
+        if (oowak_sep.length==3){  //우왁굳이 돌을 놓아서 게임이 끝나는 경우야. 지거나 비기겠지?
           const oowak_finalCell=findCell(oowak_sep[0], oowak_sep[1]) //일단 승패 알려주기 전에 좌표를 찍어줘야 해.
           oowak_finalCell.style.backgroundColor='blue'
           if (oowak_sep[2]==0){
@@ -224,7 +223,7 @@
           omokbgm.play();
           board.style.cursor = 'auto';
           board.style.pointerEvents = 'auto'; 
-          setInterval(fetchDataFromServer, 1000);   //우왁굳-->시청자
+          setInterval(showhwak, 1000);   //우왁굳-->시청자
           setTimeout(ultimateDecision, 20000);      //이제 시청자가 클릭을 할 수 있어.(20초동안)
         } 
       })
