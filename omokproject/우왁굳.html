@@ -52,10 +52,35 @@
         cell.className = 'cell empty';
         cell.dataset.row = i;
         cell.dataset.col = j;
-        cell.addEventListener('click', handleCellClick);
-        board.appendChild(cell);
+        cell.addEventListener('click', handleCellClick);//아 셀을 클릭하면 handleCellClick가 호출됨.
+        board.appendChild(cell);                        //굳이 호출을 하지 않아도 됨. 클릭하면 호출
       }
     }
+
+
+    function firstattack(){
+      fetch('선공을 누가 하는지 알려주는 서버.php') //서버가 1하고 0 중에 난수로 데이터 값을 줄 수 있나..?
+      .then(response => {
+      if (!response.ok){
+        throw new Eroor('Network response was not ok');
+      }
+      return response.json();
+      }
+      )
+      .then(data => {
+        if (data==1){//우왁굳.html에서 우왁굳 선공
+          alert('당신의 선공입니다. 이 메세지를 끄시고 게임을 시작하세요.');
+          //수동으로 함수를 호출하는 건 아닌 것 같아. 우왁굳이 오목판을 클릭해야 게임이 시작한다.
+        } else if (data==0){//우왁굳.html에서 우왁굳 후공
+          board.style.cursor='default';
+          board.style.pointerEvents='none'; //따라서 우왁굳 클릭 못함.
+          setInterval(showhwak, 1000);
+          setTimeout(ultimateDecision, 20000);
+        };
+      }) //data는 아마 숫자로 받을 듯 1을 주면 우왁굳 선공, 0을 주면 시청자 선공
+    } 
+
+    firstattack(); //게임 시작 전에 한 번만 실행.
 
     const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
 
@@ -66,9 +91,9 @@
       return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
     } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
 
-    function fetchDataFromServer() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
-      fetch('serverend.php')
-      .then(response => {
+    function showhwak() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
+      fetch('serverend.php')           //근데 우왁굳 입장에서도 확률을 봐야하니 이건 필요함.
+      .then(response => {              //좌표랑 확률 다 띄워주는 함수야. 
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
@@ -76,8 +101,8 @@
       })
       .then(data => { //들어있는 데이터:시청자가 누른 좌표 x, y, 확률이 칸 하나 두고 주는 문자열이야.
         xcor=[];
-        ycor=[]; //이걸 왜 비운거지..? 갑자기 이해가 안 돼..
-        hwak=[];
+        ycor=[]; //이걸 왜 비운거지..? 갑자기 이해가 안 돼.. 
+        hwak=[]; //x y 좌표 같은 게 여러 개 들어있으면 안되자너.
         var sep=data.split(" ");
         for(i=0; i<sep.length; i++){
           if(i%3==0){
@@ -124,7 +149,7 @@
         numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
         if (cell) {
-          cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 클릭을 할 때 확률 사라져.
+          cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 최종결정 시 확률 사라져.
         }
         });
     
@@ -134,12 +159,10 @@
           const viewer_finalCell=findCell(msep[0], msep[1]);
           viewer_finalCell.style.backgroundColor='black';
           if (msep[2]==0){
-            alert("헤이 시청자가 돌을"+msep[0], msep[1]+"에 두었어.");
             alert("졌으니깐 다음에 더 분발해보도록");
             //뭐 예를 들어 다른 페이지로 넘어가게 해서 게임을 끝내기..?
           }
           if (msep[2]==2){
-            alert("헤이 시청자가 돌을"+msep[0], msep[1]+"에 두었어.")
             alert("둘이 비겼어. 다음엔 더 잘해봐.");
             //다른 페이지로 넘어가게 해서 게임 끝내기..? return을 써야하나..?
           }
@@ -214,14 +237,15 @@
 
       oowak_result();//우왁굳이 돌을 두자마자 게임이 끝났는지 판단을 계속 해야해.
 
-      clickedCell.style.pointerEvents = 'none'; 
+      clickedCell.style.cursor='default';
+      clickedCell.style.pointerEvents = 'none';  //우왁굳-->시청자 우왁굳이 돌을 못놓게 해
 
       // 특정 상황에서 클릭을 일시적으로 비활성화하고자 하는 코드
       disableClick();
       
 
       //우왁굳-->시청자
-      setInterval(fetchDataFromServer, 1000);   //20초동안 돌 못 놓는 동안 1초에 한 번씩 계속 확률값을 봐야겠지?
+      setInterval(showhwak, 1000);   //20초동안 돌 못 놓는 동안 1초에 한 번씩 계속 확률값을 봐야겠지?
       setTimeout(ultimateDecision, 20000); //20초동안 우왁굳이 돌을 못 놓을 때 20초 후에 시청자가 최종 결정을 내려야 함.
       // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
       
