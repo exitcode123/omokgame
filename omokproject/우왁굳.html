@@ -44,9 +44,15 @@
     const boardSize = 15;
     const board = document.getElementById('board');
 
+    const socket = new WebSocket('wss://your-websocket-server'); //웹 소켓을 통해 서버랑 통신할거임.
+
+    var xcor=new Array();
+    var ycor=new Array();
+    var hwak=new Array();
+
     var numberCoordinates = []; 
 
-    for (let i = 0; i < boardSize; i++) {
+    for (let i = 0; i < boardSize; i++) {    //오목판을 만든 코드
       for (let j = 0; j < boardSize; j++) {
         const cell = document.createElement('div');
         cell.className = 'cell empty';
@@ -57,30 +63,33 @@
       }
     }
 
+    socket.addEventListener('open', (event) => {
+    console.log('WebSocket 연결이 열렸습니다:', event);
+    });
 
-    function firstattack(){
-      fetch('선공을 누가 하는지 알려주는 서버.php') //서버가 1하고 0 중에 난수로 데이터 값을 줄 수 있나..?
-      .then(response => {
-      if (!response.ok){
-        throw new Eroor('Network response was not ok');
-      }
-      return response.json();
-      }
-      )
-      .then(data => {
-        if (data==1){//우왁굳.html에서 우왁굳 선공
-          alert('당신의 선공입니다. 이 메세지를 끄시고 게임을 시작하세요.');
-          //수동으로 함수를 호출하는 건 아닌 것 같아. 우왁굳이 오목판을 클릭해야 게임이 시작한다.
-        } else if (data==0){//우왁굳.html에서 우왁굳 후공
+    socket.addEventListener('message', (event) => {
+      // 서버로부터 메시지를 받았을 때의 처리
+      const data = JSON.parse(event.data);  //서버로부터 받은 데이터를 파싱한다.
+
+      if (data.action === '선공 선택') {     //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
+          // 선공을 선택한 경우 처리
+          board.style.cursor='auto'; //우왁굳 선공
+          board.style.pointerEvents='auto';
+          alert('당신은 선공입니다. 이 창을 끄고 오목돌을 놓아주세요.');
+      } else if (data.action === '후공 선택') { //우왁굳이 후공을 선택함. 
           board.style.cursor='default';
-          board.style.pointerEvents='none'; //따라서 우왁굳 클릭 못함.
+          board.style.pointerEvents='none';
+          alert('당신은 후공입니다.');
           setInterval(showhwak, 1000);
           setTimeout(ultimateDecision, 20000);
-        };
-      }) //data는 아마 숫자로 받을 듯 1을 주면 우왁굳 선공, 0을 주면 시청자 선공
-    } 
+      }
+      });
 
-    firstattack(); //게임 시작 전에 한 번만 실행.
+
+    function getback(){ //오목 게임이 끝난 후에 초기화면으로 돌아가게 하는 함수
+      window.location.href='우왁굳대기방.html';
+    }
+
 
     const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
 
@@ -90,6 +99,7 @@
     function findCell(row, col) {
       return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
     } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
+
 
     function showhwak() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
       fetch('serverend.php')           //근데 우왁굳 입장에서도 확률을 봐야하니 이건 필요함.
@@ -101,9 +111,11 @@
       })
       .then(data => { //들어있는 데이터:시청자가 누른 좌표 x, y, 확률이 칸 하나 두고 주는 문자열이야.
         xcor=[];
-        ycor=[]; //이걸 왜 비운거지..? 갑자기 이해가 안 돼.. 
+        ycor=[]; 
         hwak=[]; //x y 좌표 같은 게 여러 개 들어있으면 안되자너.
+
         var sep=data.split(" ");
+        
         for(i=0; i<sep.length; i++){
           if(i%3==0){
             xcor.push(sep[i]);
@@ -160,17 +172,20 @@
           viewer_finalCell.style.backgroundColor='black';
           if (msep[2]==0){
             alert("졌으니깐 다음에 더 분발해보도록");
-            //뭐 예를 들어 다른 페이지로 넘어가게 해서 게임을 끝내기..?
+            setTimeout(getback, 15000);
           }
           if (msep[2]==2){
             alert("둘이 비겼어. 다음엔 더 잘해봐.");
-            //다른 페이지로 넘어가게 해서 게임 끝내기..? return을 써야하나..?
+            setTimeout(getback, 15000);
           }
         }
+
         const cell = findCell(msep[0], msep[1]);
 
         if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
           cell.style.backgroundColor='black';//시청자-->우왁굳
+          cell.style.cursor='default';
+          cell.style.pointerEvents='none';
           board.style.cursor='auto';
           board.style.pointerEvents='auto'; 
         }                                   
@@ -184,9 +199,7 @@
 
   function oowak_result(){ //우왁굳이 돌을 놓을 때마다 계속 요청을 할거야. 야 서버야, 끝남? 이렇게
 
-    const clickingCell = document.querySelector('.clicked');
-
-    fetch('우왁굳이 돌을 놓은 직후에 게임의 결과를 알려주는 서버.php')
+    fetch('우왁굳이 돌을 놓은 직후에 게임의 결과를 알려주는 서버.js')
     .then(response => { 
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -195,20 +208,18 @@
     })
     .then(data => {
       if (data==1){
-        clickingCell.style.backgroundColor='blue';
         alert('게임에서 이겼습니다. 축하드립니다.');
-        //다른 페이지로 넘어가게 하고 그런 거 안되나..?
+        setTimeout(getback, 15000);
       } else if (data==2){
-          clickingCell.style.backgroundColor='blue';
           alert('게임에서 비겼습니다. 다음에 더 분발해보세요.');
-          //다른 페이지로 넘어가기 안되나..?
+          setTimeout(getback, 15000);
       }
     }
     )
   }
 
 
-    function disableClick() {  //클릭이랑 커서를 비활성화시키는 함수
+    function disableClick() {  //클릭이랑 커서를 20초동안 비활성화시키는 함수
       board.style.cursor = 'default';
       board.style.pointerEvents = 'none';
 
@@ -225,10 +236,11 @@
     function handleCellClick(event) {  //우왁굳이 돌을 놓는 함수야.
       const clickedCell = event.target;
 
-      clickedCell.classList.add('clicked');
       
       const clickedRow = clickedCell.dataset.row;   
       const clickedCol = clickedCell.dataset.col;
+
+      socket.send(JSON.stringify({ action: '선택', row: clickedRow, col: clickedCol }));
 
 
       clickedCell.style.backgroundColor='blue';  //우왁굳이 돌을 착수하면 파란색으로 만들어. 
@@ -237,11 +249,8 @@
 
       oowak_result();//우왁굳이 돌을 두자마자 게임이 끝났는지 판단을 계속 해야해.
 
-      clickedCell.style.cursor='default';
-      clickedCell.style.pointerEvents = 'none';  //우왁굳-->시청자 우왁굳이 돌을 못놓게 해
-
       // 특정 상황에서 클릭을 일시적으로 비활성화하고자 하는 코드
-      disableClick();
+      disableClick(); //우왁굳-->시청자, 시청자가 돌을 못 놓게 해.
       
 
       //우왁굳-->시청자
