@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대기방</title>
+</head>
+<body>
+  <h1>시청자대기방</h1>
+
+
+<script>
+  const socket = new WebSocket('wss://your-websocket-server');
+  
+  socket.addEventListener('message', (event) => {
+    // 서버로부터 메시지를 받았을 때의 처리
+    const data = JSON.parse(event.data);
+    if (data.action==='선공 선택' || data.action==='후공 선택'){
+      window.location.href='시청자.html';
+    }
+  });
+
+
+
+
+
+</script>
+
+</body>
+</html>
