@@ -40,7 +40,7 @@
   <!-- 폼 요소 -->
   <form id="gameForm" action="server.php" method="post" target="hello">
     <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
-    <input type="hidden" id="clickedRow" name="coordinate" value=""> //form 태그에 제출할 정보들이 input 태그 안에 있는거야.
+    <input type="hidden" id="clickedRow" name="coordinate" value=""> <!--form 태그에 제출할 정보들이 input 태그 안에 있는거야.-->
     <!-- 제출 버튼 -->
     <input type="submit" value="Submit" style="display: none;">
   </form>
@@ -48,6 +48,8 @@
   <script>
     const boardSize = 15;
     const board = document.getElementById('board');
+
+    const socket=new WebSocket('wss://your-websocket-server');
 
     const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
 
@@ -71,28 +73,30 @@
       }
     }  //그냥 여기는 보드에 셀 추가해서 오목판을 만드는 2중 for문이야.
 
+    function getback(){ //오목 게임이 끝난 후에 초기화면으로 돌아가게 하는 함수
+      window.location.href='시청자대기방.html';
+    }
 
-  function firstattack(){
-    fetch('선공을 누가 하는지 알려주는 서버.php') //서버가 1하고 0 중에 난수로 데이터 값을 줄 수 있나..?
-      .then(response => {
-      if (!response.ok){
-        throw new Eroor('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data==1){//시청자.html에서 시청자 후공
+    socket.addEventListener('open', (event) => {
+      console.log('WebSocket연결이 열렸습니다.');
+    });
+
+    socket.addEventListener('message', (event) => {
+      const data=JSON.parse(event.data);
+
+      if (data.action==='선공 선택'){  //시청자의 후공, 우왁굳의 선공
         board.style.cursor='default';
         board.style.pointerEvents='none';
-        oowak(); //우왁굳 선공 따라서 시청자들은 보드 클릭을 못함.
-      } else if (data==0){//시청자.html에서 시청자 선공
+        alert('상대방이 선공을 선택하여 당신은 후공입니다.');
+      } else if (data.action==='후공 선택'){ //시청자의 선공, 우왁굳의 후공
+         board.style.cursor='auto';
+         board.style.pointerEvents='auto';
+         alert('상대방이 후공을 선택하여 당신은 선공입니다. 게임을 시작해주세요.');
          setInterval(showhwak, 1000);
          setTimeout(ultimateDecision, 20000);
-      };
-    }) //data는 아마 숫자로 받을 듯 1을 주면 우왁굳 선공, 0을 주면 시청자 선공
-  } 
-
-  firstattack(); //게임 시작 전에 한 번만 실행.
+      }
+    })
+  
 
   function findCell(row, col) {
     return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
@@ -145,8 +149,9 @@
     });
   } 
 
+
   function ultimateDecision(){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
-    fetch('serverggt.php')     //그냥 좌표 하나만 받을거야.
+    fetch('serverggt.php')     //그냥 좌표 하나만 받을거야. 이건 내가 요청하는게 맞음.
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -168,24 +173,23 @@
         viewer_finalCell.style.backgroundColor='black';
         if (msep[2]==1){
           alert("승리한 것을 축하드립니다.");
-          //다른 페이지로 넘어갈 수 있나..?
+          setTimeout(getback, 15000);
         } else if (msep[2]==2){ 
           alert("아쉽지만 무승부입니다. 좀 더 분발해보세요.");
-          //다른 페이지로 넘어갈 수 있나..?
+          setTimeout(getback, 15000);
         }
-        return 0; //msep.length가 3이라 게임을 끝내야 하는 상황이라. return 써서 함수를 종료시킨다.
-      }           //근데 굳이 return을 써야 할까..? 다른 페이지로 넘어가게 해서 끝내면 안되나..? 페이지를 하나 더 만들어야겠지...
+      }           
         
       const cell = findCell(msep[0], msep[1]);
 
-      if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
+      if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야. 근데 if(cell)을 한다고 해서 어떻게 그렇게 구현이 되는거지..
         cell.style.backgroundColor='black';
         cell.style.cursor = 'default';     //20초만에 돌이 놓아지는 순간 이젠 우왁굳의 차례니깐 board 전체에 돌이 안놓아져.                                    
         cell.style.pointerEvents = 'none'; //이 말은 즉슨 시청자는 돌을 못 놓아.
         omokbgm.play();
         board.style.cursor = 'default';    //ultimateDecision해서 이제 시청자 클릭 못함.
         board.style.pointerEvents = 'none';  //board랑 cell의 원래 스타일을 돌리지 않는 한 시청자가 다시 돌을 놓을 수 없다.
-        oowak();//시청자->우왁굳
+        oowak();//시청자->우왁굳, 우왁굳으로부터의 클릭 좌표를 받을 동안 대기하는 역할을 한다.
       }                                   
       /*
       xcor=[];
@@ -194,48 +198,79 @@
       */
     });
   }
-   
+  /*oowak함수의 역할:시청자.html에서 우왁굳이 어디에다가 돌을 놓는지 정보를 받아야 해.
+  근데 시청자 입장에선 알 수가 없고, 우왁굳이 클릭을 할거야. 그러면 그 클릭한 좌표값을
+  백엔드 쪽에서 나에게 넘겨줄거고, 그 좌표값을 받아서 파랗게 칠할 수 있어. 
+  */
+                                                           
+                                                            
+  function oowak(){  //우왁굳의 클릭좌표 데이터를 받는다. 또는 승패가 갈렸을 때 문자열을 받기도 한다. 두 종류를 받음.                    
+    socket.addEventListener('message', (event) => { //승패 갈리기 전에는 객체를 받고, 승패가 갈린 후에는 문자열 받아.
+    const data = event.data;
 
-  //setInterval(ultimateDecision, 20000); 이건 ㄹㅇ 실행하면 안 될 것 같아.
+    try {
+      const jsonData = JSON.parse(data);
 
-  function oowak(){   //우왁굳의 좌표 정보를 받고 그 좌표에 파란색을 칠해야 해.
-    fetch('우왁굳의 좌표를 주는 서버.php') //시간이 10초, 20초 걸리건 어쨌든 우리는 우왁굳으로부터 좌표를 받게 될거고 그러면 클릭 가능해.
-      .then(response => response.json())  //이렇게 하면 받을 준비만 하다가 받고 후딱 처리하는거야.
-      .then(data=>{
-        var oowak_sep=data.split(" ");
+      // 만약 JSON 데이터인 경우, jsonData 객체에 action이라는 프로퍼티가 있다면 처리
+      if (jsonData.action==='선택') {
+        const cell = findCell(jsonData.row, jsonData.col);  //우왁굳의 클릭좌표 데이터를 받는다.
 
-        if (oowak_sep.length==3){  //우왁굳이 돌을 놓아서 게임이 끝나는 경우야. 지거나 비기겠지?
-          const oowak_finalCell=findCell(oowak_sep[0], oowak_sep[1]) //일단 승패 알려주기 전에 좌표를 찍어줘야 해.
-          oowak_finalCell.style.backgroundColor='blue'
-          if (oowak_sep[2]==0){
-            alert("당신은 패배했습니다.");
-          } else if (oowak_sep[2]==2){
-            alert("아쉽지만 무승부입니다. 좀 더 분발해보세요.");
-          }
-          //return 0;  return을 굳이 써야할까..? 다른 페이지로 넘어가게 해서 끝내면 안되나..?
-        }
-        //findcell함수로 넘어가서 오목 좌표에 찍히기 전에 내가 받은 데이터 배열의 길이를 알아야 해. 
-        //승패가 결정됐는지 판정하고 그 다음에 findcell을 찍는게 흐름상 맞아.
-        const oowak_cell=findCell(oowak_sep[0], oowak_sep[1]);
-
-        if (oowak_cell){ //우왁굳의 클릭 좌표
-          oowak_cell.style.backgroundColor='blue';  //우왁굳이 돌을 놓아.
-          omokbgm.play();
+        if (cell) {
+          cell.style.backgroundColor = 'black';
+          cell.style.cursor='default';
+          cell.style.pointerEvents='none';       //음... 일단 이렇게 만들면 왠진 모르겠지만 색 칠해진 cell은
+          omokbgm.play();                        //클릭하고 커서가 안먹음. ㄱㅇㄷ임. 왜 그러지...
           board.style.cursor = 'auto';
-          board.style.pointerEvents = 'auto'; 
-          setInterval(showhwak, 1000);   //우왁굳-->시청자
-          setTimeout(ultimateDecision, 20000);      //이제 시청자가 클릭을 할 수 있어.(20초동안)
-        } 
-      })
-      
-  }
+          board.style.pointerEvents = 'auto';
+          setInterval(showhwak, 1000);
+          setTimeout(ultimateDecision, 20000);
+        }
+      }
 
-  
+    } catch (error) {
+      // JSON 파싱에 실패하면 문자열 데이터로 처리
+      const dataParts = data.split(" ");
+
+      if (dataParts.length === 3) {
+        const finalCell = findCell(dataParts[0], dataParts[1]);
+        finalCell.style.backgroundColor = 'blue';
+
+        if (dataParts[2] === '0') {
+          alert('당신은 패배했습니다.');
+          socket.close();
+          setTimeout(getback, 15000);
+        } else if (dataParts[2] === '2') {
+          alert('아쉽지만 무승부입니다. 좀 더 분발해보세요.');
+          socket.close();
+          setTimeout(getback, 15000);
+        }
+      }
+
+      const cell = findCell(dataParts[0], dataParts[1]);
+
+      if (cell) {
+        // 문자열 데이터 처리 로직
+        cell.style.backgroundColor = 'blue';
+        cell.style.cursor='default';
+        cell.style.pointerEvents='none';
+        omokbgm.play();
+        board.style.cursor = 'auto';
+        board.style.pointerEvents = 'auto';
+        setInterval(showhwak, 1000);
+        setTimeout(ultimateDecision, 20000);
+      }
+    }
+  });
+}
+
   function handleCellClick(event) {  //클릭을 할 때마다 server.php로 전송이 된다.
     const clickedCell = event.target;
     
     const clickedRow = clickedCell.dataset.row;
     const clickedCol = clickedCell.dataset.col;
+
+    //board.style.cursor='default';   이건 아마 나중에 추가할거임.
+    //board.style.pointerEvents='none';  시청자 한 명당 한 번만 클릭 투표 기회가 주어진다.
 
     
     // 클릭한 좌표를 hidden 필드에 설정
