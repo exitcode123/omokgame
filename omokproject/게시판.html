@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>클릭 가능한 게시판</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    #board {
+      max-width: 600px;
+      margin: 20px auto;
+    }
+
+    #post-form {
+      margin-bottom: 20px;
+    }
+
+    .post {
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="board">
+    <h1>1대100 오목게임방</h1>
+    
+    <form id="post-form">
+      <label for="author">작성자:</label>
+      <input type="text" id="author" required>
+      
+      <label for="message">메시지:</label>
+      <textarea id="message" required></textarea>
+
+      <button type="button" onclick="addPost()">게시물 등록</button>
+    </form>
+
+    <div id="posts"></div>
+  </div>
+
+  <script>
+    function addPost() {
+      const authorInput = document.getElementById('author');
+      const messageInput = document.getElementById('message');
+      const postsContainer = document.getElementById('posts');
+
+      const author = authorInput.value;
+      const message = messageInput.value;
+
+      if (author && message) {
+        const postElement = document.createElement('div');
+        postElement.className = 'post';
+        postElement.innerHTML = `<strong>${author}</strong>: ${message}`;
+        
+        // 클릭 이벤트 추가
+        postElement.onclick = function() {
+          window.location.href='시청자대기방.html';
+        };
+
+        postsContainer.appendChild(postElement);
+
+        // 게시물 등록 후 입력 필드 비우기
+        authorInput.value = '';
+        messageInput.value = '';
+      } else {
+        alert('작성자와 메시지를 모두 입력하세요.');
+      }
+    }
+  </script>
+</body>
+</html>
