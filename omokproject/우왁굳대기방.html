@@ -11,21 +11,26 @@
 <button id="후공버튼" name="후공">후공</button> 
 
 <script>
-  const socket = new WebSocket('wss://your-websocket-server');
+  const socket = io('your-websocket-server');
+
+  const data1={ action : '선공 선택'};
+
+  const data2={ action : '후공 선택'};
 
   document.getElementById('선공버튼').addEventListener('click', function() {
     // 선공을 선택한 경우
     // 웹 소켓을 통해 메시지를 서버로 전송
-    socket.send(JSON.stringify({ action: '선공 선택'}));
+    socket.emit('선공 선택', JSON.stringify(data1));
     window.location.href='우왁굳.html';
   });
 
   document.getElementById('후공버튼').addEventListener('click', function() {
     // 후공을 선택한 경우
     // 웹 소켓을 통해 메시지를 서버로 전송
-    socket.send(JSON.stringify({ action: '후공 선택' }));
+    socket.emit('후공 선택', JSON.stringify(data2));
     window.location.href='우왁굳.html';
   });
+  
 
 </script>
 

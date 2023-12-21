@@ -10,15 +10,24 @@
 
 
 <script>
-  const socket = new WebSocket('wss://your-websocket-server');
+  const socket = io('your-websocket-server');
+
+  socket.on('선공 선택', (data) => {
+    window.location.href='시청자.html';
+  })
   
-  socket.addEventListener('message', (event) => {
+  socket.on('후공 선택', (data) => {
+    window.location.href='시청자.html';
+  })
+  
+  /*socket.addEventListener('message', (event) => {
     // 서버로부터 메시지를 받았을 때의 처리
     const data = JSON.parse(event.data);
     if (data.action==='선공 선택' || data.action==='후공 선택'){
       window.location.href='시청자.html';
     }
   });
+  */
 
 
 

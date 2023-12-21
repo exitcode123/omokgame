@@ -35,22 +35,22 @@
 </head>
 <body>
   <div id="board"></div>
-  <form id="gameForm" action="server.php" method="post" target="hello">
-    <input type="hidden" id="clickedRow" name="coordinate" value=""> 
-    <!-- 제출 버튼 -->
-    <input type="submit" value="Submit" style="display: none;">
-  </form>
+
   <script>
     const boardSize = 15;
     const board = document.getElementById('board');
 
-    const socket = new WebSocket('wss://your-websocket-server'); //웹 소켓을 통해 서버랑 통신할거임.
+    const socket = io('your-websocket-server'); //웹 소켓을 통해 서버랑 통신할거임.
 
     var xcor=new Array();
     var ycor=new Array();
     var hwak=new Array();
+    var numberCoordinates =new Array(); 
 
-    var numberCoordinates = []; 
+    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+    // Audio 객체 생성
+    const omokbgm = new Audio(soundFilePath);
 
     for (let i = 0; i < boardSize; i++) {    //오목판을 만든 코드
       for (let j = 0; j < boardSize; j++) {
@@ -63,162 +63,137 @@
       }
     }
 
-    socket.addEventListener('open', (event) => {
-    console.log('WebSocket 연결이 열렸습니다:', event);
-    });
-
-    socket.addEventListener('message', (event) => {
-      // 서버로부터 메시지를 받았을 때의 처리
-      const data = JSON.parse(event.data);  //서버로부터 받은 데이터를 파싱한다.
-
-      if (data.action === '선공 선택') {     //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
-          // 선공을 선택한 경우 처리
-          board.style.cursor='auto'; //우왁굳 선공
-          board.style.pointerEvents='auto';
-          alert('당신은 선공입니다. 이 창을 끄고 오목돌을 놓아주세요.');
-      } else if (data.action === '후공 선택') { //우왁굳이 후공을 선택함. 
-          board.style.cursor='default';
-          board.style.pointerEvents='none';
-          alert('당신은 후공입니다.');
-          setInterval(showhwak, 1000);
-          setTimeout(ultimateDecision, 20000);
-      }
-      });
-
-
     function getback(){ //오목 게임이 끝난 후에 초기화면으로 돌아가게 하는 함수
       window.location.href='우왁굳대기방.html';
     }
-
-
-    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
-
-    // Audio 객체 생성
-    const omokbgm = new Audio(soundFilePath);
 
     function findCell(row, col) {
       return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
     } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
 
 
-    function showhwak() {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 fetch
-      fetch('serverend.php')           //근데 우왁굳 입장에서도 확률을 봐야하니 이건 필요함.
-      .then(response => {              //좌표랑 확률 다 띄워주는 함수야. 
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
+    socket.addEventListener('open', (event) => {
+      console.log('WebSocket 연결이 열렸습니다:', event);
+    });
+
+
+    socket.on('선공 선택', (data) => {
+      // 서버로부터 메시지를 받았을 때의 처리
+      const parsedData = JSON.parse(data);  //서버로부터 받은 데이터를 파싱한다.
+
+      if (parsedData.action === '선공 선택') {     //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
+          // 선공을 선택한 경우 처리
+          board.style.cursor='auto'; //우왁굳 선공
+          board.style.pointerEvents='auto';
+          alert('당신은 선공입니다. 이 창을 끄고 오목돌을 놓아주세요.');
+      }
+    });
+      
+    socket.on('후공 선택', (data) => {
+      const parseData=JSON.parse(data);
+
+      if (parseData.action==='후공 선택'){
+        board.style.cursor='default';
+        board.style.pointerEvents='none';
+        alert('당신은 후공입니다.');
+        //showhwak(data);
+        //setTimeout(ultimateDecision(data), 20000);
+      }
+    });
+
+    socket.on('showhwak', (data) => {
+      const parsedData=JSON.parse(data);
+      showhwak(parsedData); //이벤트가 showhwak일 때는 그냥 일반 문자열로 받는 것이 좋을 것 같아.
+    })
+
+    socket.on('ultimateDecision', (data) => {
+      const parsedData=JSON.parse(data);
+      ultimateDecision(parsedData);
+    })
+   
+
+    function showhwak(data) { // data:이미 파싱된 자바스크립트 객체, 시청자들이 클릭한 정보를 1초마다 확률을 띄워주는 함수
+      xcor=[];
+      ycor=[]; 
+      hwak=[]; //x y 좌표 같은 게 여러 개 들어있으면 안되자너.
+
+      var sep=data.split(" ");
+      
+      for(i=0; i<sep.length; i++){
+        if(i%3==0){
+          xcor.push(sep[i]);
         }
-        return response.json();
-      })
-      .then(data => { //들어있는 데이터:시청자가 누른 좌표 x, y, 확률이 칸 하나 두고 주는 문자열이야.
-        xcor=[];
-        ycor=[]; 
-        hwak=[]; //x y 좌표 같은 게 여러 개 들어있으면 안되자너.
-
-        var sep=data.split(" ");
-        
-        for(i=0; i<sep.length; i++){
-          if(i%3==0){
-            xcor.push(sep[i]);
-          }
-          if(i%3==1){
-            ycor.push(sep[i]);
-          }
-          if(i%3==2){
-            hwak.push(sep[i]);
-          }
+        if(i%3==1){
+          ycor.push(sep[i]);
         }
-
-        numberCoordinates = [];
-
-        for (let i = 0; i < sep.length/3; i++) {
-          const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
-          numberCoordinates.push(coordinate);
+        if(i%3==2){
+          hwak.push(sep[i]);
         }
+      }
 
-        numberCoordinates.forEach(coord => {
-          const cell = findCell(coord.row, coord.col);
-          if (cell) {
-            cell.textContent = coord.number+"%";
-          }
-        });
+      numberCoordinates = [];
 
-      })
-      .catch(error => {
-        const timeResultElement = document.getElementById('timeResult');
-        timeResultElement.textContent = 2;
-      });
-    } 
+      for (let i = 0; i < sep.length/3; i++) {
+        const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
+        numberCoordinates.push(coordinate);
+      }
 
-    function ultimateDecision(){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
-      fetch('serverggt.php')     //그냥 좌표 하나만 받을거야.
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
-      .then(data => {
-        numberCoordinates.forEach(coord => {
+      numberCoordinates.forEach(coord => {
         const cell = findCell(coord.row, coord.col);
         if (cell) {
-          cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 최종결정 시 확률 사라져.
+          cell.textContent = coord.number+"%";
         }
-        });
-    
-        var msep=data.split(" ");
-
-        if (msep.length==3){ //시청자가 ultimatedecision을 통해서 게임이 끝났을 경우 우왁굳은 지거나 비겨
-          const viewer_finalCell=findCell(msep[0], msep[1]);
-          viewer_finalCell.style.backgroundColor='black';
-          if (msep[2]==0){
-            alert("졌으니깐 다음에 더 분발해보도록");
-            setTimeout(getback, 15000);
-          }
-          if (msep[2]==2){
-            alert("둘이 비겼어. 다음엔 더 잘해봐.");
-            setTimeout(getback, 15000);
-          }
-        }
-
-        const cell = findCell(msep[0], msep[1]);
-
-        if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
-          cell.style.backgroundColor='black';//시청자-->우왁굳
-          cell.style.cursor='default';
-          cell.style.pointerEvents='none';
-          board.style.cursor='auto';
-          board.style.pointerEvents='auto'; 
-        }                                   
-        /*
-        xcor=[];
-        ycor=[];  xcor ycor hwak을 내가 왜 비웠지? 동원이 말로는 무의미한 행동, 그 근거를 찾아보자.
-        hwak=[];
-        */
       });
-   }
+    }
+    
 
-  function oowak_result(){ //우왁굳이 돌을 놓을 때마다 계속 요청을 할거야. 야 서버야, 끝남? 이렇게
+    function ultimateDecision(data){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
 
-    fetch('우왁굳이 돌을 놓은 직후에 게임의 결과를 알려주는 서버.js')
-    .then(response => { 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+      numberCoordinates.forEach(coord => {
+      const cell = findCell(coord.row, coord.col);
+      if (cell) {
+        cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 최종결정 시 확률 사라져.
       }
-      return response.json();
-    })
-    .then(data => {
-      if (data==1){
+      });
+  
+      var msep=data.split(" ");
+
+      if (msep.length==3){ //시청자가 ultimatedecision을 통해서 게임이 끝났을 경우 우왁굳은 지거나 비겨
+        const viewer_finalCell=findCell(msep[0], msep[1]);
+        viewer_finalCell.style.backgroundColor='black';
+        if (msep[2]==0){
+          alert("졌으니깐 다음에 더 분발해보도록");
+          setTimeout(getback, 15000);
+        }
+        if (msep[2]==2){
+          alert("둘이 비겼어. 다음엔 더 잘해봐.");
+          setTimeout(getback, 15000);
+        }
+      }
+
+      const cell = findCell(msep[0], msep[1]);
+
+      if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야.
+        cell.style.backgroundColor='black';//시청자-->우왁굳
+        cell.style.cursor='default';
+        cell.style.pointerEvents='none';
+        board.style.cursor='auto';
+        board.style.pointerEvents='auto'; 
+      }                                  
+    }
+
+
+    socket.on('oowak_result', (data) => { //우왁굳이 돌을 놓아서 끝났을 때 서버로부터 데이터를 받아야 함. {end:'1' or '2'}
+      const parsedData=JSON.parse(data);
+      if (parsedData.end==='1'){
         alert('게임에서 이겼습니다. 축하드립니다.');
         setTimeout(getback, 15000);
-      } else if (data==2){
-          alert('게임에서 비겼습니다. 다음에 더 분발해보세요.');
-          setTimeout(getback, 15000);
+      } else if (parsedData.end==='2'){
+        alert('게임에서 비겼습니다. 다음에 더 분발해보세요.');
+        setTimeout(getback, 15000);
       }
-    }
-    )
-  }
-
-
+    })
+  
     function disableClick() {  //클릭이랑 커서를 20초동안 비활성화시키는 함수
       board.style.cursor = 'default';
       board.style.pointerEvents = 'none';
@@ -236,33 +211,30 @@
     function handleCellClick(event) {  //우왁굳이 돌을 놓는 함수야.
       const clickedCell = event.target;
 
-      
-      const clickedRow = clickedCell.dataset.row;   
+      const clickedRow = clickedCell.dataset.row; 
       const clickedCol = clickedCell.dataset.col;
+      
+      const cordata={row : clickedCell, col : clickedCol};
 
-      socket.send(JSON.stringify({ action: '선택', row: clickedRow, col: clickedCol }));
-
+      socket.emit('oowakcor', JSON.stringify(cordata));
 
       clickedCell.style.backgroundColor='blue';  //우왁굳이 돌을 착수하면 파란색으로 만들어. 
 
       omokbgm.play();
 
-      oowak_result();//우왁굳이 돌을 두자마자 게임이 끝났는지 판단을 계속 해야해.
+      //oowak_result();우왁굳이 돌을 두자마자 게임이 끝났는지 판단을 계속 해야해.
+      //oowak_result()는 필요없어. http 안써서 게임이 끝나면 서버에서 알려줄거야.
+      //난 그 데이터 받아서 그냥 띄워주기만 하면 돼.
 
       // 특정 상황에서 클릭을 일시적으로 비활성화하고자 하는 코드
       disableClick(); //우왁굳-->시청자, 시청자가 돌을 못 놓게 해.
       
 
       //우왁굳-->시청자
-      setInterval(showhwak, 1000);   //20초동안 돌 못 놓는 동안 1초에 한 번씩 계속 확률값을 봐야겠지?
-      setTimeout(ultimateDecision, 20000); //20초동안 우왁굳이 돌을 못 놓을 때 20초 후에 시청자가 최종 결정을 내려야 함.
+      //setInterval(showhwak, 1000); 이거 아마 동원이가 1초에 한 번씩 계속 데이터를 줄 듯..? 20초동안 돌 못 놓는 동안 1초에 한 번씩 계속 확률값을 봐야겠지?
+      //setTimeout(ultimateDecision, 20000); 이것도 아마 동원이가 시청자 턴 되고 20초 지나면 줄 듯 20초동안 우왁굳이 돌을 못 놓을 때 20초 후에 시청자가 최종 결정을 내려야 함.
       // clickedCell.style.cursor = 'default'; 이 코드는 여기에 들어가면 안되지... 생각해보자.
       
-      // 클릭한 좌표를 hidden 필드에 설정
-      document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
-
-      
-      document.getElementById('gameForm').submit(); //우왁굳의 클릭한 좌표를 서버에게 준다.
     }
 
   </script>
