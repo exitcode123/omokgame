@@ -71,7 +71,7 @@
     
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                fetch('http://192.168.219.104:3000/user')
+                fetch('http://localhost:5500/user')
                 .then(response => response.json())
                 .then(user => {
                     const userDisplay = document.getElementById('userDisplay');
@@ -85,7 +85,7 @@
             
 
                 // 게시글 목록 가져오기
-                fetch('http://192.168.219.104:3000/posts')
+                fetch('http://localhost:5500/posts')
                 .then(response => response.json())
                 .then(posts => displayPosts(posts));
 
@@ -128,32 +128,30 @@
 
                 getUser().then(user => {
                     if (user) {
-                    fetch('http://192.168.219.104:3000/posts', {
-                        method: 'POST',
-                        headers: {
-                        'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ title, author: user.username }),
-                    })
+                        fetch('http://localhost:5500/posts', {
+                            method: 'POST',
+                            headers: {
+                            'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 'title':title, 'author': user.username }),
+                        })
                         .then(response => response.json())
                         .then(newPost => {
-                        console.log('New post created:', newPost);
-                        document.getElementById('postForm').reset();
-                        fetch('http://192.168.219.104:3000/posts')
-                            .then(response => response.json())
-                            .then(posts => displayPosts(posts));
-                        })
+                            console.log('New post created:', newPost);
+                            window.location.href = `http://localhost:5500/post/${newPost.id}`;
+                            })
                         .catch(error => console.error('Error creating post:', error));
                     } else {
                     alert('로그인이 필요합니다.');
                     }
                 });
+                
             }
 
     // 추가: 현재 사용자 정보 업데이트 및 화면에 표시
     function updateAndDisplayCurrentUser() {
       updateCurrentUserDisplay();
-      fetch('http://192.168.219.104:3000/posts')
+      fetch('http://localhost:5500/posts')
         .then(response => response.json())
         .then(posts => displayPosts(posts));
     }
@@ -168,7 +166,7 @@
                 return;
             }
         
-            fetch('http://192.168.219.104:3000/signup', {
+            fetch('http://localhost:5500/signup', {
                 method: 'POST',
                 headers: {
                 'Content-Type': 'application/json',
@@ -190,7 +188,7 @@
                 return;
             }
         
-            fetch('http://192.168.219.104:3000/login', {
+            fetch('http://localhost:5500/login', {
                 method: 'POST',
                 headers: {
                 'Content-Type': 'application/json',
@@ -201,7 +199,7 @@
                 .then(result => {
                 alert(result.message);
                 updateAndDisplayCurrentUser();
-                fetch('http://192.168.219.104:3000/posts')
+                fetch('http://localhost:5500/posts')
                     .then(response => response.json())
                     .then(posts => displayPosts(posts));
                 })
@@ -210,25 +208,25 @@
         
             // 추가: 로그아웃
             function logout() {
-            fetch('http://192.168.219.104:3000/logout', {
-                method: 'POST',
-                headers: {
-                'Content-Type': 'application/json',
-                },
-            })
+                fetch('http://localhost:5500/logout', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    },
+                })
                 .then(response => response.json())
                 .then(result => {
-                alert(result.message);
-                fetch('http://192.168.219.104:3000/posts')
+                    alert(result.message);
+                    fetch('http://localhost:5500/posts')
                     .then(response => response.json())
-                    .then(posts => displayPosts(posts));
+                    .then(posts => updateAndDisplayCurrentUser());
                 })
                 .catch(error => console.error('Error logging out:', error));
             }
         
             // 추가: 현재 사용자 정보 가져오기
             function getUser() {
-            return fetch('http://192.168.219.104:3000/user')
+            return fetch('http://localhost:5500/user')
                 .then(response => response.json())
                 .then(user => user)
                 .catch(error => console.error('Error getting user:', error));

@@ -1,0 +1,78 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Register Example</title>
+</head>
+<body>
+  <h1>Login</h1>
+  <form id="loginForm">
+    <label for="login_user">user:</label>
+    <input type="text" id="login_user" name="username" required><br>
+    <label for="loginPassword">Password:</label>
+    <input type="password" id="loginPassword" name="password" required><br>
+    <button type="submit">Login</button>
+  </form>
+  <p id="loginResult"></p>
+
+  <h1>Register</h1>
+  <form id="registerForm">
+    <label for="register_user">user:</label>
+    <input type="text" id="register_user" name="username" required><br>
+    <label for="registerPassword">Password:</label>
+    <input type="password" id="registerPassword" name="password" required><br>
+    <button type="submit">Register</button>
+  </form>
+  <p id="registerResult"></p>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const user = document.getElementById('login_user').value;
+      const password = document.getElementById('loginPassword').value;
+
+      const response = await fetch('/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user, password })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('loginResult').textContent = `로그인 성공! 사용자 : ${result.userID}`;
+      } else {
+        document.getElementById('loginResult').textContent = `로그인 실패: ${result.error}`;
+      }
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const user = document.getElementById('register_user').value;
+      const password = document.getElementById('registerPassword').value;
+
+      const response = await fetch('/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user, password })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('registerResult').textContent = `회원가입 성공! 사용자 : ${result.username}`;
+      } else {
+        document.getElementById('registerResult').textContent = `회원가입 실패: ${result.error}`;
+      }
+    });
+  </script>
+</body>
+</html>

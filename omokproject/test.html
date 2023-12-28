@@ -1,0 +1,46 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Omok Game</title>
+</head>
+<body>
+    <button onclick="buttonClicked()">붐</button>
+
+  <!-- Your game interface goes here -->
+  <script>
+// 세션 ID를 서버에게 전송하여 웹소켓에 연결
+    fetch('/getSessionID')
+    .then(response => response.json())
+    .then(data => {
+        const sessionID = data.sessionID;
+    });
+    
+    function buttonClicked(){
+        const socket = io();
+    
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+
+            var l = document.cookie.split("=");
+            // 서버로 메시지 보내기
+            socket.emit('session',l[1]);
+        });
+    // 서버로부터 메시지 수신
+        socket.on('messag', (data) => {
+            console.log('Received message from server:', data);
+        });
+}
+
+    
+
+    // TODO: Implement client-side game logic and events here
+
+  </script>
+</body>
+</html>
