@@ -31,7 +31,17 @@ io.on("connection", (socket)=>{
 
   // 쿠키 값 중에서 roomid 가져오기
   const cookies = socket.request.headers.cookie;
-  const roomId = getCookieValue(cookies, "roomid");
+  var arr123 = cookies.split("; ");
+  var arr12 = [];
+  var roomId;
+  for (let a of arr123){
+    arr12.push(a.split("="));
+  }
+  for(var i = 0 ; i < arr12.length ; i++){
+    if(arr12[i][0]==="roomid"){
+      roomId = arr12[i][1];
+    }
+  }
 
   // 1초를 늦추는 함수
   async function delayedExecution() {
@@ -58,7 +68,7 @@ io.on("connection", (socket)=>{
         }
         console.log('Connected to MySQL as id ' + connection.threadId);
     });
-    var query = `SELECT gameresult FROM ${to_string(roomId)+"gameresult"}`;
+    var query = `SELECT gameresult FROM ${String(roomId)+"gameresult"}`;
     connection.query(query, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
@@ -144,21 +154,9 @@ io.on("connection", (socket)=>{
     
     return checkWinner(gr);
   }
-  //배열 똑같은거 계산하는 함수
-  function countDuplicates(arr) {
-    var count = new Map();
-    for(let i = 0; i<arr.length; i++){
-      if(count.has(arr[i])){
-        count.set(arr[i],count.get(arr[i])+1);
-      }
-      else{
-        count.set(arr[i],1);
-      }
-    }
-
-  }
   //1초에 한번씩 확률 보내고 20초가 지나면 좌표랑 결과를 보냄
   function showhwak_and_result(){
+
     var connection = mysql.createConnection({
       host: 'localhost',
       user: 'root',
@@ -173,19 +171,80 @@ io.on("connection", (socket)=>{
         console.log('Connected to MySQL as id ' + connection.threadId);
     });
 
-    for (let i = 0; i < 20; i++) {
-      const query = `SELECT * FROM ${to_string(roomId)+"xy"}`;
-      connection.query(query, (error, results) => {
-      if (error) throw error;
+    //배열 똑같은거 계산하는 함수 (완)
+    function countDuplicates(arr) {
+      var count = new Map();
+      var arrlen = arr.length;
+      for(let i = 0; i<arrlen; i++){
+        if(count.has(arr[i])){
+          count.set(arr[i],count.get(arr[i])+1);
+        }
+        else{
+          count.set(arr[i],1);
+        }
+      }
+      for(let key of count.keys()){
+        count.set(key,Math.floor((count.get(key)/arrlen)*100));
+      }
 
-      var result = countDuplicates(results);
-      io.to(rooms[roomId]).emit('hwak',result);
+      var result = "";
+
+      for(let key of count.keys()){
+        result += key + " " + String(count.get(key)) + " ";
+      }
+      return result;
+    }
+
+    //hong 계산 (완)
+    function calhong(arr) {
+      var count = new Map();
+      var arrlen = arr.length;
+      for(let i = 0; i<arrlen; i++){
+        if(count.has(arr[i])){
+          count.set(arr[i],count.get(arr[i])+1);
+        }
+        else{
+          count.set(arr[i],1);
+        }
+      }
+      var resultarr = [];
+      var maxValue = 0;
+      for (let key of count.keys()){
+        if(maxValue<count.get(key)){
+          resultarr=[key];
+        }
+        else if(maxValue===count.get(key)){
+          resultarr.push(key);
+        }
+      }
+
+      var rand = Math.floor(Math.random()*resultarr.length);
+      return resultarr[rand];
+    }
+
+    //1초에 한번 좌표, 확률 보냄 (완)
+    for (let i = 0; i < 20; i++) {
+      const query = `SELECT xy FROM ${String(roomId)+"xy"}`;  //const simplifiedResult = result.map(row => row.xy);
+      connection.query(query, (error, results) => {
+        if (error) throw error;
+
+        var result = countDuplicates(results);
+        io.to(rooms[roomId]).emit('hwak',result);
       });
       delayedExecution();
     }
+
     //result에서 가장 높은 확률을 가지는 값을 hong이라고 함
     var hong;
-    const sql = `INSERT INTO posts (xy) VALUES (${hong})`;
+
+    const query = `SELECT xy FROM ${String(roomId)+"xy"}`;
+    connection.query(query, (error, results) => {
+      if (error) throw error;
+
+      hong = calhong(results);
+    });
+
+    var sql = `INSERT INTO ${String(roomId)+"gameresult"} (gameresult) VALUES (${hong})`;
     connection.query(sql, (error) => {
       if (error) {
         console.error('Error inserting into users table: ' + error.stack);
@@ -194,19 +253,24 @@ io.on("connection", (socket)=>{
       }
     })
     var gameresult = gameresult();
-    if(gameresult===2 || gameresult===3){
-      io.to(cookies[roomid]).emit('100choice',hong+to_string(gameresult));
-    }
-    else{
-      io.to(cookies[roomid]).emit('100choice',hong);
-    }
+    
+    io.to(rooms[roomId]).emit('100choice',hong + " " + String(gameresult));
+
+    var sql = `DELETE FROM ${String(roomId)+"xy"};`;
+    connection.query(sql, (error) => {
+      if (error) {
+        console.error('Error inserting into users table: ' + error.stack);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+    })
   }
 
   const {url} = socket.request;
   console.log(`연결된: ${url}`);
 
 
-  //방 참가하기(참가자)
+  //방 참가하기(part) (완)
   socket.on('joinRoom', () => {
     if (rooms[roomId]) {
       rooms[roomId].participants.push(socket.id);
@@ -220,7 +284,7 @@ io.on("connection", (socket)=>{
       io.to(socket.id).emit('roomNotFound', roomId);
     }
   });
-  //방 만들기(만든이)
+  //방 만들기(creator) (완)
   socket.on('createRoom', () => {
     rooms[roomId] = { creator: socket.id, participants: [socket.id] };
     socket.join(roomId);
@@ -239,7 +303,7 @@ io.on("connection", (socket)=>{
       }
       console.log('Connected to MySQL as id ' + connection.threadId);
     });
-    var query = "CREATE TABLE "+to_string(roomId)+"gameresult(gameresult VARCHAR(255)); ";
+    var query = "CREATE TABLE "+String(roomId)+"gameresult(gameresult VARCHAR(255)); ";
     connection.query(query, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
@@ -247,7 +311,7 @@ io.on("connection", (socket)=>{
         return;
       }
     });
-    var query = "CREATE TABLE "+to_string(roomId)+"xy(gameresult VARCHAR(255)); ";
+    var query = "CREATE TABLE "+String(roomId)+"xy(gameresult VARCHAR(255)); ";
     connection.query(query, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
@@ -256,7 +320,7 @@ io.on("connection", (socket)=>{
       }
     });
   });
-  //선공을 만든이가 입력함(만약 참가자가 선공일 경우도 포함)
+  //선공을 creator가 입력함(만약 part가 선공일 경우도 포함) (완)
   socket.on('inputfirstattck',(result)=>{
     var connection = mysql.createConnection({
       host: 'localhost',
@@ -292,7 +356,7 @@ io.on("connection", (socket)=>{
     }
 
   });
-  //만든이가 선택할 때(선택하고 참가자 턴으로 넘어감)
+  //creator가 선택할 때(선택하고 part 턴으로 넘어감) (완)
   socket.on('onechoice',(coordinate)=>{
     const dbConnection1 = mysql.createConnection({
       host: 'localhost',
@@ -307,29 +371,25 @@ io.on("connection", (socket)=>{
       }
       console.log('Connected to MySQL as id ' + connection.threadId);
   });
-    const sql = `INSERT INTO coordinate (xy) VALUES (${coordinate})`;
-    connection.query(query, (error,result) => {
+    const sql = `INSERT INTO ${String(roomId)+"gameresult"} (gameresult) VALUES (${coordinate})`;
+    connection.query(sql, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
         res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
     });
+
     var result = gameresult();
-    if(result===1 || result===3){
-      for(let element of rooms[roomID].participants){
-        socket.to(element).emit('onechoice',coordinate + to_string(result));
-      }
+    for(let element of rooms[roomId].participants){
+      socket.to(element).emit('onechoice',coordinate + result);
     }
-    else{
-      for(let element of rooms[roomID].participants){
-        socket.to(element).emit('onechoice',coordinate);
+    if(result==='0')
       showhwak_and_result();
-      //다시 만든이 턴
-      }
-    }
+
+
   });
-  //100명이 선택한 것을 데이터베이스에 넣음
+  //part가 선택한 것을 데이터베이스에 넣음 (완)
   socket.on('hundredchoice',(coordinate)=>{
     var dbConnection = mysql.createConnection({
       host: 'localhost',
@@ -344,7 +404,7 @@ io.on("connection", (socket)=>{
       }
       console.log('Connected to MySQL as id ' + connection.threadId);
     });
-    const query = `INSERT INTO ${to_string(roomId)+"xy"} (gameresult) VALUE (${coordinate})`;
+    const query = `INSERT INTO ${String(roomId)+"xy"} (gameresult) VALUE (${coordinate})`;
     connection.query(query, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
@@ -352,6 +412,61 @@ io.on("connection", (socket)=>{
         return;
       }
     });
+  });
+  //연결이 끊어지면 발생함
+  socket.on('disconnect', () => {
+    var dbConnection = mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: '',
+      database: 'coordinate'
+    });
+    dbConnection.connect((err) => {
+      if (err) {
+        console.error('Error connecting to MySQL: ' + err.stack);
+        return;
+      }
+      console.log('Connected to MySQL as id ' + connection.threadId);
+    });
+    var query = `DROP TABLE ${String(roomId)+"xy"};`;
+    connection.query(query, (error,result) => {
+      if (error) {
+        console.error('Error inserting into posts table: ' + error.stack);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+    });
+    var query = `DROP TABLE ${String(roomId)+"gameresult"};`;
+    connection.query(query, (error,result) => {
+      if (error) {
+        console.error('Error inserting into posts table: ' + error.stack);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+    });
+
+    var dbConnection = mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: '',
+      database: 'gameroom'
+    });
+    dbConnection.connect((err) => {
+      if (err) {
+        console.error('Error connecting to MySQL: ' + err.stack);
+        return;
+      }
+      console.log('Connected to MySQL as id ' + connection.threadId);
+    });
+    var query = `DELETE FROM posts WHERE id=${roomId};`;
+    connection.query(query, (error,result) => {
+      if (error) {
+        console.error('Error inserting into posts table: ' + error.stack);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+    });
+    console.log(`delete ${roomId}`);
   });
 
 });
@@ -464,16 +579,16 @@ app.post('/login', (req, res) => {
   const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
   connection.query(query, [username, password], (error, results) => {
       if (error) {
-      console.error('Error querying users table: ' + error.stack);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
+        console.error('Error querying users table: ' + error.stack);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
       }
 
       if (results.length === 1) {
-      req.session.user = results[0]; // 세션에 사용자 정보 저장
-      res.json({ message: 'Login successful' });
+        req.session.user = results[0]; // 세션에 사용자 정보 저장
+        res.json({ message: 'Login successful' });
       } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ error: 'Invalid credentials' });
       }
   });
 });
