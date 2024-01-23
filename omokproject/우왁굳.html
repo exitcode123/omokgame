@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -40,7 +41,17 @@
   <input type="checkbox" id="secondMove" name="move" value="second"> 후공 선택
   <button id="startButton" onclick="startGame()">게임 시작</button>
 
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js">
+  <script>
+
+
+    console.log("dafdsf");
+    const socket = io(); //웹 소켓을 통해 서버랑 통신할거임.
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+
+      socket.emit('createRoom',"");
+    }); 
 
     var firstMoveCheckbox = document.getElementById("firstMove");
     var secondMoveCheckbox = document.getElementById("secondMove");
@@ -60,7 +71,7 @@
     })
 
     function startGame(){
-
+      console.log("dfafd");
       document.getElementById('startButton').classList.add('hidden');
       document.getElementById('firstMove').classList.add('hidden');  //사라져야 할 것들을 그룹핑해서 클래스 지정-->display:none으로 바꿈
       document.getElementById('secondMove').classList.add('hidden'); //게임 시작 누르는 순간 선, 후공 게임시작 버튼 사라짐
@@ -88,10 +99,6 @@
     const boardSize = 15;
 
     const board = document.getElementById('board');
-
-    const io = require('socket.io-client');
-
-    const socket = io('your-websocket-server'); //웹 소켓을 통해 서버랑 통신할거임.
 
     var xcor=new Array();
     var ycor=new Array();
@@ -270,9 +277,9 @@
       const clickedRow = clickedCell.dataset.row; 
       const clickedCol = clickedCell.dataset.col;
       
-      const cordata={row : clickedRow, col : clickedCol};
+      const cordata=clickedRow+" "+clickedCol;
 
-      socket.emit('onechoice', JSON.stringify(cordata));
+      socket.emit('onechoice', cordata);
 
       clickedCell.style.backgroundColor = creator_color;  //돌을 착수하면 색깔이 바뀌어야 해.
 
