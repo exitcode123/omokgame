@@ -138,7 +138,8 @@
                         .then(response => response.json())
                         .then(newPost => {
                             console.log('New post created:', newPost);
-                            window.location.href = `http://localhost:5500/post/${newPost.id}`;
+                            document.cookie='roomid='+newPost.id;
+                            window.location.href = `http://localhost:5500/woo`;
                             })
                         .catch(error => console.error('Error creating post:', error));
                     } else {
