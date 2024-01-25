@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-gap: 2px;
+      border: 2px solid #333;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .cell.empty {
+      background-color: #eee;
+    }
+  </style>
+  <title>오목판</title>
+</head>
+<body>
+
+  <div id="board"></div>
+  <div id="timeResult"></div>
+  
+  <!-- 폼 요소 -->
+  <form id="gameForm" action="server" method="post" target="hello">
+    <!-- 클릭한 셀의 좌표를 담을 hidden 필드 -->
+    <input type="hidden" id="clickedRow" name="coordinate" value=""> <!--form 태그에 제출할 정보들이 input 태그 안에 있는거야.-->
+    <!-- 제출 버튼 -->
+    <input type="submit" value="Submit" style="display: none;">
+  </form> 
+
+  <script>
+    const boardSize = 15;
+    const board = document.getElementById('board');
+
+    const socket = io("http://192.168.0.102:5500");
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+
+      socket.emit('joinRoom',"");
+    }); 
+
+    const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
+
+    // Audio 객체 생성
+    const omokbgm = new Audio(soundFilePath);
+
+    function resetGame() { //게임이 끝난 후 오목판을 깨끗하게 비움.
+      var omokBoard = document.getElementById("board");
+      omokBoard.innerHTML = "";
+    }
+
+    var xcor=new Array(); //x좌표
+    var ycor=new Array(); //y좌표
+    var hwak=new Array(); //확률값
+    var numberCoordinates = new Array();
+
+    for (let i = 0; i < boardSize; i++) {
+      for (let j = 0; j < boardSize; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell empty';
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+        cell.addEventListener('click', handleCellClick); //아 셀을 클릭하면 handleCellClick가 호출됨.
+        board.appendChild(cell);                         //굳이 호출을 하지 않아도 됨. 클릭하면 호출
+      }
+    }  //그냥 여기는 보드에 셀 추가해서 오목판을 만드는 2중 for문이야.
+
+    function findCell(row, col) {
+      return board.querySelector('div[data-row="'+row+'"][data-col="'+col+'"]');
+    } //꼭 프로젝트 다 끝내고 뜯어서 생각해보자. 어떤 원리인지
+
+    socket.addEventListener('open', (event) => {
+      console.log('WebSocket연결이 열렸습니다.');
+    });
+
+
+    socket.on('inputfirstattack', (data) => {
+      // 서버로부터 메시지를 받았을 때의 처리
+      
+      if (data === '1') { //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
+        creator_color='black'; //part가 후공
+        part_color='white';
+        board.style.cursor='default'; 
+        board.style.pointerEvents='none';
+        alert('당신은 후공입니다.');
+      } else if (data==='0'){
+        creator_color='white';  //part가 선공
+        part_color='black';
+        board.style.cursor='auto';
+        board.style.pointerEvents='auto';
+        alert('당신은 선공입니다. 이 창을 끄고 오목돌을 놓아주세요.');
+      }
+    });
+
+
+    socket.on('hundredchoice', (data) => { //part 차례일 때 1초에 한 번씩 함수 호출해서 확률을 보여주게 된다.
+      showhwak(data); 
+    })
+
+    socket.on('100choice', (data) => {
+      ultimateDecision(data);
+    })
+   
+  
+  function showhwak(data) {   //시청자들이 클릭한 정보를 1초마다 확률 띄워주는 함수
+    xcor=[];                //data 안에는 자바스크립트 객체가 들어있어.
+    ycor=[]; 
+    hwak=[];  //data에 들어있는 것: data="showhwak 1 2 50 1 3 25"(문자열) 
+    var sep=data.split(" ");
+  
+    for(i=0; i<sep.length; i++){
+      if(i%3==0){
+        xcor.push(sep[i]);
+      }
+      if(i%3==1){
+        ycor.push(sep[i]);
+      }
+      if(i%3==2){
+        hwak.push(sep[i]);
+      }
+    }
+
+    numberCoordinates = [];
+
+    for (let i = 0; i < sep.length/3; i++) {
+      const coordinate = { row: xcor[i], col: ycor[i], number: hwak[i]};
+      numberCoordinates.push(coordinate);
+    }
+
+    numberCoordinates.forEach(coord => {
+      const cell = findCell(coord.row, coord.col);
+      if (cell) {
+        cell.textContent = coord.number+"%";
+      }
+    });
+  }
+   
+
+  function ultimateDecision(data){ //어디에다가 돌을 둘지에 대한 최종결정 내리는 곳
+         //data는 자바스크립트 객체야. {x:row, y:col, end:1}
+    numberCoordinates.forEach(coord => {
+    const cell = findCell(coord.row, coord.col);
+    if (cell) {
+      cell.textContent = ''; //이렇게 하면 기존에 확률이 표시됐던 것들이 다 사라진다. 클릭을 할 때 확률 사라져.
+    }
+    });
+
+    var msep=data.split(' ');
+    
+    if (msep[2]==1){ //part가 선공으로 이김, creator가 짐
+      const viewer_finalCell=findCell(msep[0], msep[1]);
+      viewer_finalCell.style.backgroundColor = part_color;
+      alert("졌습니다. 다음에 더 분발해보세요.");
+      resetGame();
+    }
+
+    if (msep[2]==2){ //part가 후공으로 이김, creator가 짐
+      const viewer_finalCell=findCell(msep[0], msep[1]);
+      viewer_finalCell.style.backgroundColor = part_color;
+      alert("졌습니다. 다음에 더 분발해보세요.");
+      resetGame();
+    }
+
+
+    if (msep[2]==3){ //둘이 비김, 시청자가 후공이든 선공이든 노상관 걍 비긴거임.
+      const viewer_finalCell=findCell(msep[0], msep[1]);
+      viewer_finalCell.style.backgroundColor = part_color;
+      alert("비겼습니다. 다음에 더 분발해보세요.");
+      resetGame();
+    }
+
+    const cell = findCell(msep[0], msep[1]);
+
+    if (cell) { //시청자가 20초동안 결정을 하고 돌을 놓는 부분이야. 근데 if(cell)을 한다고 해서 어떻게 그렇게 구현이 되는거지..
+      cell.style.backgroundColor = part_color;
+      omokbgm.play();
+      cell.style.cursor = 'default';     //20초만에 돌이 놓아지는 순간 이젠 우왁굳의 차례니깐 board 전체에 돌이 안놓아져.                                    
+      cell.style.pointerEvents = 'none'; //part->creator 턴 변경됨.
+      board.style.cursor = 'default';    
+      board.style.pointerEvents = 'none';  
+    }                                   
+  }     
+
+         
+  socket.on('onechoice', (data) => {  //우왁굳이 두어 게임 끝난 경우 data={ row: x, col : y, end : 0 or 2} 
+    var creator_cor;
+    creator_cor=data.split(' ');
+
+    if (msep[2]===1){
+      const finalCell=findCell(creator_cor[0], creator_cor[1]);
+      finalCell.style.backgroundColor = creator_color;
+      alert('당신은 패배했습니다. 다음에 좀 더 분발해보세요.');
+      resetGame();
+    }
+
+    if (msep[2]===2){
+      const finalCell=findCell(creator_cor[0], creator_cor[1]);
+      finalCell.style.backgroundColor = creator_color;
+      alert('당신은 패배했습니다.');
+      resetGame();
+    }
+
+    if (msep[2]===3){
+      const finalCell=findCell(creator_cor[0], creator_cor[1]);
+      finalCell.style.backgroundColor = creator_color;
+      alert('비겼습니다. 다음에 좀 더 분발해보세요.');
+      resetGame();
+    }
+
+    const cell=findCell(creator_cor[0], creator_cor[1]);
+
+    if (cell){  //creator의 좌표를 받아서 칠하는 부분
+      cell.style.backgroundColor = creator_color;
+      cell.style.cursor='default';
+      cell.style.pointerEvents='none';       //음... 일단 이렇게 만들면 왠진 모르겠지만 색 칠해진 cell은
+      omokbgm.play();                        //클릭하고 커서가 안먹음. ㄱㅇㄷ임. 왜 그러지...
+      board.style.cursor = 'auto';
+      board.style.pointerEvents = 'auto';
+      //우왁굳-->시청자 공수가 변해야 하는 부분(공수가 변하는 시점을 서버가 캐치해서 showhwak 보내줄거임.)
+    }
+
+
+  })
+  
+
+  function handleCellClick(event) {  //클릭을 할 때마다 server로 전송이 된다.
+    const clickedCell = event.target;
+    
+    const clickedRow = clickedCell.dataset.row;
+    const clickedCol = clickedCell.dataset.col;
+
+    const cordata=clickedRow+" "+clickedCol;
+
+    //hundredchoice로 part에서 서버한테 보내야해.
+    socket.emit('hundredchoice', cordata);
+
+    board.style.cursor='default';   
+    board.style.pointerEvents='none';  
+
+    
+    // 클릭한 좌표를 hidden 필드에 설정
+    //document.getElementById('clickedRow').value = clickedRow+" "+clickedCol;
+
+    // 폼 제출
+    //document.getElementById('gameForm').submit();
+    }
+  </script>
+    <iframe name='hello' style='display:none;'></iframe>
+</body>
+</html>
