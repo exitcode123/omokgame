@@ -15,7 +15,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    domain: 'localhost', // 변경할 도메인 설정
+    domain: '172.21.84.167', // 변경할 도메인 설정
     secure: false, // HTTPS를 사용할 때 true로 변경
     httpOnly: false, // JavaScript에서 쿠키에 접근 불가능
     sameSite: 'strict', // SameSite 설정
@@ -43,13 +43,84 @@ io.on("connection", (socket)=>{
     }
   }
 
+  
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
   // 1초를 늦추는 함수
   async function delayedExecution() {
-    function delay(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
+    await delay(1000);
+  }
+
+
+  function checkWinner(coords) {
+    const boardSize = 15;
+    const gameBoard = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+  
+    for (let i = 0; i < coords.length; i++) {
+      const row = coords[i][0];
+      const col = coords[i][1];
+  
+      if (gameBoard[row][col] === 0) {
+        gameBoard[row][col] = i % 2 === 0 ? 1 : 2;
+      } else {
+        // Invalid move, return undefined or handle appropriately
+        return undefined;
+      }
+    }
+  
+    // Check for a win
+    for (let i = 0; i < coords.length; i++) {
+      const row = coords[i][0];
+      const col = coords[i][1];
+  
+      if (checkWin(row, col, gameBoard)) {
+        return i % 2 === 0 ? '1' : '2';
+      }
     }
 
-    await delay(1000);
+    if (coords.length===boardSize*boardSize) {
+      return '3';
+    }
+    
+    return '0';
+  }
+  function checkWin(row, col, board) {
+    const currentPlayer = board[row][col];
+  
+    // Check horizontally
+    if (countConsecutive(row, col, 0, 1, currentPlayer, board) >= 5) {
+      return true;
+    }
+    // Check vertically
+    if (countConsecutive(row, col, 1, 0, currentPlayer, board) >= 5) {
+      return true;
+    }
+    // Check diagonally (/)
+    if (countConsecutive(row, col, 1, 1, currentPlayer, board) >= 5) {
+      return true;
+    }
+    // Check diagonally (\)
+    if (countConsecutive(row, col, 1, -1, currentPlayer, board) >= 5) {
+      return true;
+    }
+  
+    return false;
+  }
+  function countConsecutive(row, col, rowIncrement, colIncrement, currentPlayer, board) {
+    let count = 0;
+  
+    while (
+      row >= 0 && row < board.length &&
+      col >= 0 && col < board[row].length &&
+      board[row][col] === currentPlayer
+    ) {
+      count++;
+      row += rowIncrement;
+      col += colIncrement;
+    }
+  
+    return count;
   }
   //게임 결과를 계산하는 함수
   function gameresult(){
@@ -75,83 +146,11 @@ io.on("connection", (socket)=>{
         res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
-      for(let i=0;i<result.length;i++){
-        gr.push(result[i].split(" "));
+      for(const row of result){
+        gr.push(row.gameresult);
       }
     });
 
-    function checkWinner(coords) {
-      const boardSize = 15;
-      const gameBoard = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
-    
-      for (let i = 0; i < coords.length; i++) {
-        const row = coords[i][0];
-        const col = coords[i][1];
-    
-        if (gameBoard[row][col] === 0) {
-          gameBoard[row][col] = i % 2 === 0 ? 1 : 2;
-        } else {
-          // Invalid move, return undefined or handle appropriately
-          return undefined;
-        }
-      }
-    
-      // Check for a win
-      for (let i = 0; i < coords.length; i++) {
-        const row = coords[i][0];
-        const col = coords[i][1];
-    
-        if (checkWin(row, col, gameBoard)) {
-          return i % 2 === 0 ? '1' : '2';
-        }
-      }
-
-      if (coords.length===boardSize*boardSize) {
-        return '3';
-      }
-      
-      return '0';
-    }
-    
-    function checkWin(row, col, board) {
-      const currentPlayer = board[row][col];
-    
-      // Check horizontally
-      if (countConsecutive(row, col, 0, 1, currentPlayer, board) >= 5) {
-        return true;
-      }
-      // Check vertically
-      if (countConsecutive(row, col, 1, 0, currentPlayer, board) >= 5) {
-        return true;
-      }
-      // Check diagonally (/)
-      if (countConsecutive(row, col, 1, 1, currentPlayer, board) >= 5) {
-        return true;
-      }
-      // Check diagonally (\)
-      if (countConsecutive(row, col, 1, -1, currentPlayer, board) >= 5) {
-        return true;
-      }
-    
-      return false;
-    }
-    
-    function countConsecutive(row, col, rowIncrement, colIncrement, currentPlayer, board) {
-      let count = 0;
-    
-      while (
-        row >= 0 && row < board.length &&
-        col >= 0 && col < board[row].length &&
-        board[row][col] === currentPlayer
-      ) {
-        count++;
-        row += rowIncrement;
-        col += colIncrement;
-      }
-    
-      return count;
-    }
-    
     return checkWinner(gr);
   }
 
@@ -181,8 +180,11 @@ io.on("connection", (socket)=>{
   }
   //hong 계산 (완)
   function calhong(arr) {
+
     var count = new Map();
     var arrlen = arr.length;
+
+    //count에 좌표와 개수를 저장함
     for(let i = 0; i<arrlen; i++){
       if(count.has(arr[i])){
         count.set(arr[i],count.get(arr[i])+1);
@@ -191,8 +193,11 @@ io.on("connection", (socket)=>{
         count.set(arr[i],1);
       }
     }
+
     var resultarr = [];
     var maxValue = 0;
+
+    //count에서 개수가 가장 많은 좌표를 resultarr에 저장함
     for (let key of count.keys()){
       if(maxValue<count.get(key)){
         resultarr=[key];
@@ -202,6 +207,7 @@ io.on("connection", (socket)=>{
       }
     }
 
+    //resultarr에 있는 것 중 랜덤으로 하나 정함
     var rand = Math.floor(Math.random()*resultarr.length);
     return resultarr[rand];
   }
@@ -228,8 +234,10 @@ io.on("connection", (socket)=>{
       connection.query(query, (error, results) => {
         if (error) throw error;
 
+        console.log("loop");
+
         var result = countDuplicates(results);
-        io.to(rooms[roomId]).emit('hwak',result);
+        io.to(roomId).emit('hwak',result);
       });
       delayedExecution();
     }
@@ -240,21 +248,22 @@ io.on("connection", (socket)=>{
     const query = `SELECT xy FROM ${String(roomId)+"xy"}`;
     connection.query(query, (error, results) => {
       if (error) throw error;
+      const simplifiedResult = results.map(row => row.xy);
 
-      hong = calhong(results);
+      hong = calhong(simplifiedResult);
     });
 
-    var sql = `INSERT INTO ${String(roomId)+"gameresult"} (gameresult) VALUES (${hong})`;
+    var sql = `INSERT INTO ${String(roomId)+"gameresult"} (gameresult) VALUE ("${hong}")`;
     connection.query(sql, (error) => {
       if (error) {
-        console.error('Error inserting into users table: ' + error.stack);
+        console.error('Error inserting into users table13: ' + error.stack);
         res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
     })
     var gameresult1 = gameresult();
 
-    io.to(rooms[roomId]).emit('100choice',hong + " " + String(gameresult1));
+    io.to(roomId).emit('100choice',hong + " " + String(gameresult1));
 
     var sql = `DELETE FROM ${String(roomId)+"xy"};`;
     connection.query(sql, (error) => {
@@ -405,7 +414,7 @@ io.on("connection", (socket)=>{
       }
       console.log('Connected to MySQL as id ' + dbConnection.threadId);
     });
-    const query = `INSERT INTO ${String(roomId)+"xy"} (gameresult) VALUE (${coordinate})`;
+    const query = `INSERT INTO ${String(roomId)+"xy"} (xy) VALUE ("${coordinate}")`;
     dbConnection.query(query, (error,result) => {
       if (error) {
         console.error('Error inserting into posts table: ' + error.stack);
@@ -416,58 +425,58 @@ io.on("connection", (socket)=>{
   });
   //연결이 끊어지면 발생함
   socket.on('disconnect', () => {
-    var dbConnection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'coordinate'
-    });
-    dbConnection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + dbConnection.threadId);
-    });
-    var query = `DROP TABLE ${String(roomId)+"xy"};`;
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
-    var query = `DROP TABLE ${String(roomId)+"gameresult"};`;
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+  //   var dbConnection = mysql.createConnection({
+  //     host: 'localhost',
+  //     user: 'root',
+  //     password: '',
+  //     database: 'coordinate'
+  //   });
+  //   dbConnection.connect((err) => {
+  //     if (err) {
+  //       console.error('Error connecting to MySQL: ' + err.stack);
+  //       return;
+  //     }
+  //     console.log('Connected to MySQL as id ' + dbConnection.threadId);
+  //   });
+  //   var query = `DROP TABLE ${String(roomId)+"xy"};`;
+  //   dbConnection.query(query, (error,result) => {
+  //     if (error) {
+  //       console.error('Error inserting into posts table: ' + error.stack);
+  //       res.status(500).json({ error: 'Internal Server Error' });
+  //       return;
+  //     }
+  //   });
+  //   var query = `DROP TABLE ${String(roomId)+"gameresult"};`;
+  //   dbConnection.query(query, (error,result) => {
+  //     if (error) {
+  //       console.error('Error inserting into posts table: ' + error.stack);
+  //       res.status(500).json({ error: 'Internal Server Error' });
+  //       return;
+  //     }
+  //   });
 
-    var dbConnection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'gameroom'
-    });
-    dbConnection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + dbConnection.threadId);
-    });
-    var query = `DELETE FROM posts WHERE id=${roomId};`;
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
-    console.log(`delete ${roomId}`);
+  //   var dbConnection = mysql.createConnection({
+  //     host: 'localhost',
+  //     user: 'root',
+  //     password: '',
+  //     database: 'gameroom'
+  //   });
+  //   dbConnection.connect((err) => {
+  //     if (err) {
+  //       console.error('Error connecting to MySQL: ' + err.stack);
+  //       return;
+  //     }
+  //     console.log('Connected to MySQL as id ' + dbConnection.threadId);
+  //   });
+  //   var query = `DELETE FROM posts WHERE id=${roomId};`;
+  //   dbConnection.query(query, (error,result) => {
+  //     if (error) {
+  //       console.error('Error inserting into posts table: ' + error.stack);
+  //       res.status(500).json({ error: 'Internal Server Error' });
+  //       return;
+  //     }
+  //   });
+  //   console.log(`delete ${roomId}`);
   });
 
 });

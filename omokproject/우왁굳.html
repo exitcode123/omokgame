@@ -43,9 +43,7 @@
 
   <script>
 
-
-    console.log("dafdsf");
-    const socket = io(); //웹 소켓을 통해 서버랑 통신할거임.
+    const socket = io("http://172.21.84.167:5500"); //웹 소켓을 통해 서버랑 통신할거임.
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -71,7 +69,6 @@
     })
 
     function startGame(){
-      console.log("dfafd");
       document.getElementById('startButton').classList.add('hidden');
       document.getElementById('firstMove').classList.add('hidden');  //사라져야 할 것들을 그룹핑해서 클래스 지정-->display:none으로 바꿈
       document.getElementById('secondMove').classList.add('hidden'); //게임 시작 누르는 순간 선, 후공 게임시작 버튼 사라짐

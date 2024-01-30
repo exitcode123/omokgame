@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -44,16 +45,21 @@
     <input type="hidden" id="clickedRow" name="coordinate" value=""> <!--form 태그에 제출할 정보들이 input 태그 안에 있는거야.-->
     <!-- 제출 버튼 -->
     <input type="submit" value="Submit" style="display: none;">
-  </form>
-  i'm not sure if this form is necessary i don't think we need it. Socket.io is replacing that. 
+  </form> 
 
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js">
+  <script>
+    var creator_color;
+    var part_color;
     const boardSize = 15;
     const board = document.getElementById('board');
 
-    const io = require('socket.io-client');
+    const socket = io("http://172.21.84.167:5500");
 
-    const socket = io('your-websocket-server');
+    socket.on('connect', () => {
+      console.log('Connected to server');
+
+      socket.emit('joinRoom',"");
+    }); 
 
     const soundFilePath = 'Coin1.mp3'; //여기에다가 오목돌 놓았을 때 듣고 싶은 브금 쓰면 됨.
 
@@ -245,10 +251,10 @@
     const clickedRow = clickedCell.dataset.row;
     const clickedCol = clickedCell.dataset.col;
 
-    const cordata={row : clickedRow, col : clickedCol};
+    const cordata=clickedRow+" "+clickedCol;
 
     //hundredchoice로 part에서 서버한테 보내야해.
-    socket.emit('hundredchoice', JSON.stringify(cordata));
+    socket.emit('hundredchoice', cordata);
 
     board.style.cursor='default';   
     board.style.pointerEvents='none';  
