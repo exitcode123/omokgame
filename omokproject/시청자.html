@@ -53,7 +53,7 @@
     const boardSize = 15;
     const board = document.getElementById('board');
 
-    const socket = io("http://172.21.84.167:5500");
+    const socket = io("http://192.168.0.102:5500");
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -96,16 +96,17 @@
     });
 
 
-    socket.on('inputfirstattack', (data) => {
+    socket.on('firstattack', (data) => {
       // 서버로부터 메시지를 받았을 때의 처리
       
-      if (data === '1') { //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
+      if (data === 1) { //게임의 첫 단추를 꿰는 코드, 선, 후공 데이터 받고 게임을 시작한다.
+        console.log("sun");
         creator_color='black'; //part가 후공
         part_color='white';
         board.style.cursor='default'; 
         board.style.pointerEvents='none';
         alert('당신은 후공입니다.');
-      } else if (data==='0'){
+      } else if (data === 0){
         creator_color='white';  //part가 선공
         part_color='black';
         board.style.cursor='auto';
@@ -208,21 +209,21 @@
     var creator_cor;
     creator_cor=data.split(' ');
 
-    if (msep[2]===1){
+    if (creator_cor[2]===1){
       const finalCell=findCell(creator_cor[0], creator_cor[1]);
       finalCell.style.backgroundColor = creator_color;
       alert('당신은 패배했습니다. 다음에 좀 더 분발해보세요.');
       resetGame();
     }
 
-    if (msep[2]===2){
+    if (creator_cor[2]===2){
       const finalCell=findCell(creator_cor[0], creator_cor[1]);
       finalCell.style.backgroundColor = creator_color;
       alert('당신은 패배했습니다.');
       resetGame();
     }
 
-    if (msep[2]===3){
+    if (creator_cor[2]===3){
       const finalCell=findCell(creator_cor[0], creator_cor[1]);
       finalCell.style.backgroundColor = creator_color;
       alert('비겼습니다. 다음에 좀 더 분발해보세요.');
@@ -235,7 +236,7 @@
       cell.style.backgroundColor = creator_color;
       cell.style.cursor='default';
       cell.style.pointerEvents='none';       //음... 일단 이렇게 만들면 왠진 모르겠지만 색 칠해진 cell은
-      omokbgm.play();                        //클릭하고 커서가 안먹음. ㄱㅇㄷ임. 왜 그러지...
+      //omokbgm.play();                        //클릭하고 커서가 안먹음. ㄱㅇㄷ임. 왜 그러지...
       board.style.cursor = 'auto';
       board.style.pointerEvents = 'auto';
       //우왁굳-->시청자 공수가 변해야 하는 부분(공수가 변하는 시점을 서버가 캐치해서 showhwak 보내줄거임.)

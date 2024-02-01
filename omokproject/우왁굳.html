@@ -31,19 +31,23 @@
     .cell.empty {
       background-color: #eee;
     }
+
+    .hidden{
+      display: none;
+    }
   </style>
   <title>우왁굳</title>
 </head>
 <body>
   <div id="board"></div>
 
-  <input type="checkbox" id="firstMove" name="move" value="first"> 선공 선택
-  <input type="checkbox" id="secondMove" name="move" value="second"> 후공 선택
+  <div id = "firstMove1"><input type="checkbox" id="firstMove" name="move" value="first"> 선공 선택</div>
+  <div id = "secondMove1"><input type="checkbox" id="secondMove" name="move" value="second"> 후공 선택</div>
   <button id="startButton" onclick="startGame()">게임 시작</button>
 
   <script>
 
-    const socket = io("http://172.21.84.167:5500"); //웹 소켓을 통해 서버랑 통신할거임.
+    const socket = io("http://192.168.0.102:5500"); //웹 소켓을 통해 서버랑 통신할거임.
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -70,14 +74,26 @@
 
     function startGame(){
       document.getElementById('startButton').classList.add('hidden');
-      document.getElementById('firstMove').classList.add('hidden');  //사라져야 할 것들을 그룹핑해서 클래스 지정-->display:none으로 바꿈
-      document.getElementById('secondMove').classList.add('hidden'); //게임 시작 누르는 순간 선, 후공 게임시작 버튼 사라짐
+      document.getElementById('firstMove1').classList.add('hidden');  //사라져야 할 것들을 그룹핑해서 클래스 지정-->display:none으로 바꿈
+      document.getElementById('secondMove1').classList.add('hidden'); //게임 시작 누르는 순간 선, 후공 게임시작 버튼 사라짐
+
+      //선공을 클릭했는지 후공을 클릭했는지 알아야 됨
 
       if (firstMoveCheckbox.checked) {
-        socket.emit('inputfirstattack', 1); //선공 골랐다고 서버에 보냄
 
+        socket.emit('inputfirstattack', 1); //선공 골랐다고 서버에 보냄
+        creator_color='black'; //선공, 후공의 색깔이 정해진다.
+        part_color='white';
+        board.style.cursor='auto'; 
+        board.style.pointerEvents='auto';
+        alert('당신은 선공입니다. 이 창을 끄고 오목돌을 놓아주세요.');
       } else if (secondMoveCheckbox.checked) {
           socket.emit('inputfirstattack', 0); //후공 골랐다고 서버에 보냄.
+          creator_color='white';  //선공, 후공의 색깔이 정해진다. creator가 후공
+          part_color='black';
+          board.style.cursor='default';
+          board.style.pointerEvents='none';
+          alert('당신은 후공입니다.');
         }
     }
 
@@ -88,8 +104,8 @@
     
     function ending() { //게임 끝날 때 실행시키는 함수
       document.getElementById('startButton').classList.remove('hidden');
-      document.getElementById('firstMove').classList.remove('hidden');
-      document.getElementById('secondMove').classList.remove('hidden'); //없어졌던 게임시작 버튼을 생기게 하기
+      document.getElementById('firstMove1').classList.remove('hidden');
+      document.getElementById('secondMove1').classList.remove('hidden'); //없어졌던 게임시작 버튼을 생기게 하기
       resetGame()
     }
 

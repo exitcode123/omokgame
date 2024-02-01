@@ -15,7 +15,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    domain: '172.21.84.167', // 변경할 도메인 설정
+    domain: '192.168.0.102', // 변경할 도메인 설정
     secure: false, // HTTPS를 사용할 때 true로 변경
     httpOnly: false, // JavaScript에서 쿠키에 접근 불가능
     sameSite: 'strict', // SameSite 설정
