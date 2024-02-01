@@ -234,8 +234,6 @@ io.on("connection", (socket)=>{
       connection.query(query, (error, results) => {
         if (error) throw error;
 
-        console.log("loop");
-
         var result = countDuplicates(results);
         io.to(roomId).emit('hwak',result);
       });
@@ -261,6 +259,7 @@ io.on("connection", (socket)=>{
         return;
       }
     })
+    
     var gameresult1 = gameresult();
 
     io.to(roomId).emit('100choice',hong + " " + String(gameresult1));
