@@ -2,7 +2,7 @@ const Server = require("socket.io");
 const session = require('express-session');
 const express = require("express");
 const http = require("http");
-const mysql = require('mysql');
+const mysql = require('mysql2/promise');
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    domain: '172.30.1.76', // 변경할 도메인 설정
+    domain: '192.168.0.102', // 변경할 도메인 설정
     secure: false, // HTTPS를 사용할 때 true로 변경
     httpOnly: false, // JavaScript에서 쿠키에 접근 불가능
     sameSite: 'strict', // SameSite 설정
@@ -25,6 +25,32 @@ app.use(express.json());
 
 const rooms = {};
 const io = Server(server);
+
+async function runQuery(sql,db) {
+  // MySQL 데이터베이스 연결 설정
+  const connection = await mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: db
+  });
+
+  try {
+    // 쿼리 실행
+    const [rows, fields] = await connection.query(sql);
+    
+    // 여기에 다음 작업을 추가할 수 있습니다.
+    
+    return rows;
+  } catch (error) {
+    // 에러 처리
+    console.error('Error querying the database:', error);
+    throw error;
+  } finally {
+    // 연결 종료
+    await connection.end();
+  }
+}
 
 //웹소켓이 연결되면 시작됨
 io.on("connection", (socket)=>{
@@ -43,40 +69,7 @@ io.on("connection", (socket)=>{
     }
   }
 
-  // 1초를 늦추는 함수
-  function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-  async function delayedExecution() {
-    await delay(1000);
-  }
-
-  function runQuery() {
-    const connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'coordinate',
-    });
   
-    return new Promise((resolve, reject) => {
-      connection.query(`SELECT gameresult FROM ${String(roomId)+"gameresult"}`, (error, results) => {
-        if (error) {
-          console.error('Error querying the database:', error);
-          reject(error);
-          return;
-        }
-  
-        // 결과 처리
-        const gr = results.map(row => row.gameresult);
-        console.log('Result from the database:', gr);
-
-        resolve(gr);
-      });
-  
-      connection.end(); // 연결 종료
-    });
-  }
   //게임 결과를 계산하는 함수
   function checkWinner(coords) {
     const boardSize = 15;
@@ -90,7 +83,7 @@ io.on("connection", (socket)=>{
         gameBoard[row][col] = i % 2 === 0 ? 1 : 2;
       } else {
         // Invalid move, return undefined or handle appropriately
-        return undefined;
+        return '0';
       }
     }
   
@@ -147,15 +140,17 @@ io.on("connection", (socket)=>{
   
     return count;
   }
-  function gameresult(){
+  async function gameresult(){
 
-
-    runQuery().then((gr) => {
+    var sql = `SELECT gameresult FROM ${String(roomId) + "gameresult"}`;
+    runQuery(sql,"coordinate").then( (result)=>{
+      var gr = result.map(row => row.gameresult);
       return checkWinner(gr);
-    }).catch((error) => {
-      // 에러 처리
-      console.error('Error in then block:', error);
-    });
+    })
+
+    
+    
+
     // var connection = mysql.createConnection({
     //   host: 'localhost',
     //   user: 'root',
@@ -286,6 +281,7 @@ io.on("connection", (socket)=>{
     //   }
     // }, 1000);
 
+    console.log("start");
     let counter = 0;
     const intervalId = setInterval(async () => {
       const query = `SELECT xy FROM ${String(roomId) + "xy"}`;
@@ -392,61 +388,15 @@ io.on("connection", (socket)=>{
     socket.join(roomId);
     io.to(socket.id).emit('roomCreated', roomId);
 
-    var dbConnection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'coordinate'
-    });
-    dbConnection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + dbConnection.threadId);
-    });
     var query = "CREATE TABLE "+String(roomId)+"gameresult(gameresult VARCHAR(255)); ";
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+    runQuery(query,"coordinate");
     var query = "CREATE TABLE "+String(roomId)+"xy(xy VARCHAR(255)); ";
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+    runQuery(query,"coordinate");
   });
   //선공을 creator가 입력함(만약 part가 선공일 경우도 포함) (완)
   socket.on('inputfirstattack',(result)=>{
-    console.log("12345");
-    var connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'gameroom',
-    });
-    connection.connect((err) => {
-        if (err) {
-          console.error('Error connecting to MySQL: ' + err.stack);
-          return;
-        }
-        console.log('Connected to MySQL as id ' + connection.threadId);
-    });
-
     const query = `UPDATE posts SET firstattack = ${result} WHERE id = ${roomId}`;
-    connection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+    runQuery(query,"gameroom");
 
     for(let element of rooms[roomId].participants)
     {
@@ -461,61 +411,25 @@ io.on("connection", (socket)=>{
   });
   //creator가 선택할 때(선택하고 part 턴으로 넘어감) (완)
   socket.on('onechoice',(coordinate)=>{
-    const dbConnection1 = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'coordinate'
-    });
-    dbConnection1.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + dbConnection1.threadId);
-  });
     const sql = `INSERT INTO ${String(roomId)+"gameresult"} (gameresult) VALUE ("${coordinate}")`;
-    dbConnection1.query(sql, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table11: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+    runQuery(sql,"coordinate").then(()=>{
+      gameresult().then((result)=>{
+        io.to(roomId).emit('onechoice',coordinate +" "+ result);
+        if(result==='0')
+          showhwak_and_result();
+      });
 
-    var result = gameresult();
-    // for(let element of rooms[roomId].participants){
-    //   socket.to(element).emit('onechoice',coordinate +" "+ result);
-    // }
-    io.to(roomId).emit('onechoice',coordinate +" "+ result);
-    if(result==='0')
-      showhwak_and_result();
+      
+    })
+    
 
 
   });
   //part가 선택한 것을 데이터베이스에 넣음 (완)
   socket.on('hundredchoice',(coordinate)=>{
-    var dbConnection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'coordinate'
-    });
-    dbConnection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + dbConnection.threadId);
-    });
+
     const query = `INSERT INTO ${String(roomId)+"xy"} (xy) VALUE ("${coordinate}")`;
-    dbConnection.query(query, (error,result) => {
-      if (error) {
-        console.error('Error inserting into posts table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
-    });
+    runQuery(query,"coordinate");
   });
   //연결이 끊어지면 발생함
   socket.on('disconnect', () => {
@@ -609,19 +523,6 @@ app.get('/si',(req,res)=>{
 })
 //게시글 생성
 app.post('/posts', (req, res) => {
-  var connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'gameroom',
-  });
-  connection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + connection.threadId);
-  });
   const { title, author } = req.body;
 
   if (!title || !author) {
@@ -629,57 +530,23 @@ app.post('/posts', (req, res) => {
     return;
   }
 
-  const query = 'INSERT INTO posts (title, author) VALUES (?, ?)';
-  connection.query(query, [title, author], (error, result) => {
-    if (error) {
-      console.error('Error inserting into database: ' + error.stack);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
-    }
-    console.log(result.insertId);
-    res.status(201).json({ 'id': result.insertId,'title': title,'author': author });
-  });
+  const query = `INSERT INTO posts (title, author) VALUES (${title + ", " + author})`;
+  runQuery(query,"gameroom").then(result=>{res.status(201).json({ 'id': result.insertId,'title': title,'author': author });})
+  
+  
+  
 });
 //게시글을 보여줌
 app.get('/posts', (req, res) => {
-  var connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'gameroom',
+  const query = 'SELECT * FROM posts';
+  runQuery(query,"gameroom").then(result=>{
+    res.json(result);
   });
-  connection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + connection.threadId);
-  });
-const query = 'SELECT * FROM posts';
-connection.query(query, (error, results) => {
-  if (error) {
-    console.error('Error querying database: ' + error.stack);
-    res.status(500).json({ error: 'Internal Server Error' });
-    return;
-  }
-  res.json(results);
-});
+
+
 });
 //로그인 함
 app.post('/login', (req, res) => {
-  var connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'userdb',
-  });
-  connection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + connection.threadId);
-  });
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -687,37 +554,22 @@ app.post('/login', (req, res) => {
       return;
   }
 
-  const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
-  connection.query(query, [username, password], (error, results) => {
-      if (error) {
-        console.error('Error querying users table: ' + error.stack);
-        res.status(500).json({ error: 'Internal Server Error' });
-        return;
-      }
+  const query = `SELECT * FROM users WHERE username = ${username} AND password = ${password}`;
+  runQuery(query,"userdb").then(results=>{
+    if (results.length === 1) {
+      req.session.user = results[0]; // 세션에 사용자 정보 저장
+      res.json({ message: 'Login successful' });
+    } else {
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
+  })
+  
+  
+  
 
-      if (results.length === 1) {
-        req.session.user = results[0]; // 세션에 사용자 정보 저장
-        res.json({ message: 'Login successful' });
-      } else {
-        res.status(401).json({ error: 'Invalid credentials' });
-      }
-  });
 });
 //회원가입 함
 app.post('/signup', (req, res) => {
-  var connection = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'userdb',
-  });
-  connection.connect((err) => {
-      if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
-        return;
-      }
-      console.log('Connected to MySQL as id ' + connection.threadId);
-  });
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -725,15 +577,8 @@ app.post('/signup', (req, res) => {
     return;
   }
 
-  const query = 'INSERT INTO users (username, password) VALUES (?, ?)';
-  connection.query(query, [username, password], (error) => {
-    if (error) {
-      console.error('Error inserting into users table: ' + error.stack);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
-    }
-    res.status(201).json({ message: 'Signup successful' });
-  });
+  const query = `INSERT INTO users (username, password) VALUES (${username}, ${password})`;
+  runQuery(query,"userdb");
 });
 //로그아웃 함
 app.post('/logout', (req, res) => {
